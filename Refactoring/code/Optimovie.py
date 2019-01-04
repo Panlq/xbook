@@ -21,7 +21,7 @@ class AbcMovie(object):
     NEW_RELAEASE = 1
 
 
-class Movie(AbcMovie):
+class Movie(object):
     def __init__(self, title, priceCode):
         self._title = title
         self._priceCode = priceCode
@@ -34,6 +34,25 @@ class Movie(AbcMovie):
 
     def getTitle(self):
         return self._title
+
+    def getCharge(self, daysRented):
+        result = 0
+        if self._priceCode == AbcMovie.REGULAR:
+            result += 2
+            if daysRented > 2:
+                result += (daysRented - 2) * 1.5
+        elif self._priceCode == AbcMovie.NEW_RELAEASE:
+            result += daysRented * 3
+        elif self._priceCode == AbcMovie.CHILDRENS:
+            result += 1.5
+            if daysRented > 3:
+                result += (daysRented - 3) * 1.5
+        return result
+
+    def getFrequentRenterPoints(self, daysRented):
+        if self._priceCode == AbcMovie.NEW_RELAEASE and daysRented > 1:
+            return 2
+        return 1
 
 
 class Rental(object):
@@ -48,26 +67,10 @@ class Rental(object):
         return self._movie
 
     def getCharge(self):
-        result = 0
-        moviePriceCode = self._movie.getPriceCode()
-        daysRented = self._daysRented
-        if moviePriceCode == AbcMovie.REGULAR:
-            result += 2
-            if daysRented > 2:
-                result += (daysRented - 2) * 1.5
-        elif moviePriceCode == AbcMovie.NEW_RELAEASE:
-            result += daysRented * 3
-        elif moviePriceCode == AbcMovie.CHILDRENS:
-            result += 1.5
-            if daysRented > 3:
-                result += (daysRented - 3) * 1.5
-        return result
+        return self._movie.getCharge(self._daysRented)    
 
     def getFrequentRenterPoints(self):
-        # add bonus for a two day new release rental
-        if self._movie.getPriceCode() == AbcMovie.NEW_RELAEASE and self._daysRented > 1:
-            return 2
-        return 1
+        return self._movie.getFrequentRenterPoints(self._daysRented)
 
 
 class Customer(object):
