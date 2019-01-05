@@ -15,44 +15,35 @@
 """
 
 
-class AbcMovie(object):
-    CHILDRENS = 2
-    REGULAR = 0
-    NEW_RELAEASE = 1
+from baseClass import AbcMovie, ChildrenPrice, NewReleasePrice, RegularPrice
 
 
 class Movie(object):
-    def __init__(self, title, priceCode):
+    def __init__(self, title, price):
         self._title = title
-        self._priceCode = priceCode
+        self._price = price()
 
     def getPriceCode(self):
-        return self._priceCode
+        return self._price.getPriceCode()
 
-    def setPriceCode(self, price):
-        self._priceCode = price
+    def setPriceCode(self, arg):
+        if arg == AbcMovie.REGULAR:
+            self._price = RegularPrice()
+        elif arg == AbcMovie.CHILDRENS:
+            self._price = ChildrenPrice()
+        elif arg == AbcMovie.NEW_RELAEASE:
+            self.price = NewReleasePrice()
+        else:
+            raise ValueError
 
     def getTitle(self):
         return self._title
 
     def getCharge(self, daysRented):
-        result = 0
-        if self._priceCode == AbcMovie.REGULAR:
-            result += 2
-            if daysRented > 2:
-                result += (daysRented - 2) * 1.5
-        elif self._priceCode == AbcMovie.NEW_RELAEASE:
-            result += daysRented * 3
-        elif self._priceCode == AbcMovie.CHILDRENS:
-            result += 1.5
-            if daysRented > 3:
-                result += (daysRented - 3) * 1.5
-        return result
+        return self._price.getCharge(daysRented)
 
     def getFrequentRenterPoints(self, daysRented):
-        if self._priceCode == AbcMovie.NEW_RELAEASE and daysRented > 1:
-            return 2
-        return 1
+        return self._price.getFrequentRenterPoints(daysRented)
 
 
 class Rental(object):
@@ -116,12 +107,12 @@ class Customer(object):
 
 
 if __name__ == '__main__':
-    ha = Movie('Dream1', AbcMovie.CHILDRENS)
-    hb = Movie('Dream2', AbcMovie.NEW_RELAEASE)
-    hc = Movie('Dream3', AbcMovie.CHILDRENS)
-    hd = Movie('Dream4', AbcMovie.REGULAR)
-    he = Movie('Dream5', AbcMovie.REGULAR)
-    hf = Movie('Dream6', AbcMovie.NEW_RELAEASE)
+    ha = Movie('Dream1', ChildrenPrice)
+    hb = Movie('Dream2', NewReleasePrice)
+    hc = Movie('Dream3', ChildrenPrice)
+    hd = Movie('Dream4', RegularPrice)
+    he = Movie('Dream5', RegularPrice)
+    hf = Movie('Dream6', NewReleasePrice)
     a = Customer('Mark')
     b = Customer('Jon')
     c = Customer('Jack')
@@ -130,6 +121,7 @@ if __name__ == '__main__':
     c.addRental(Rental(hd, 1))
 
     res = a.statement()
+    print(res)
     # b.statement()
-    # c.statement()
+    res = c.statement()
     print(res)
