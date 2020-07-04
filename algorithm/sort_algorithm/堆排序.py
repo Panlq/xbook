@@ -1,4 +1,8 @@
 """
+堆是一个数组，可以被看成一个近似的完全二叉树，对完全二叉树，
+若从上至下、从左至右编号，则编号为i 的结点，其左孩子编号必为2i，
+其右孩子编号必为2i＋1；其双亲的编号必为i/2（i＝1 时为根,除外）
+
 思想：升序排序
 1、根据无序序列，构建一个最大堆
     根据最大堆的定义，每个节点的值都大于或等于左右子节点
@@ -18,6 +22,8 @@
 
 
 参考：https://ictar.xyz/2015/12/07/九大排序算法及其Python实现之堆排序/
+参考:最大堆、最大堆的应用及其python实现
+https://blog.csdn.net/voidfaceless/article/details/81223294
 """
 
 
@@ -35,12 +41,13 @@ RIGHT = lambda i: 2 * i + 2
 #         keep_max_heap(array, largest)
 
 class Heap(object):
-    def __init__(slef, type_ = 'max'):
+    def __init__(self, type_ = 'max'):
         self.type_ = type_
         self.left = lambda i: 2 * i + 1
         self.right = lambda i: 2 * i + 2
 
     def heap_adjust(self, array, pos, heap_size):
+        i = pos
         while True:
             l, r = self.left(pos), self.right(pos)
             largest = l if l < heap_size and array[l] > array[i] else i
@@ -49,12 +56,11 @@ class Heap(object):
             array[i], array[largest] = array[largest], array[i]
             i = largest
 
-    @staticmethod
-    def buile_heap(array):
+    def buile_heap(self, array):
         heap_size = len(array)
         # 根据有子节点的数据量去构建堆
         for i in range(len(array) // 2 - 1, -1, -1):
-            heap_adjust(array, i, heap_size)
+            self.heap_adjust(array, i, heap_size)
     # TODO: 不要硬编码
 
 
@@ -90,6 +96,9 @@ def heap_sort(array):
 
 
 if __name__ == '__main__':
-    alist = [54, 26, 93, 17, 77, 31, 44, 55, 20]
+    import random
+    alist = list(range(1,20))
+    random.shuffle(alist)
+    print('Raw Data:', alist)
     heap_sort(alist)
-    print(alist)
+    print('Heap-Sorted Data: ', alist)

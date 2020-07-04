@@ -7,8 +7,10 @@
 
 二叉堆: 完全二叉树
 大根堆: 每个节点的值都大于或等于左右子节点
+有问题,需调整
 
 参考: https://blog.csdn.net/yuhentian/article/details/80159284
+参考: https://juejin.im/post/5c0f9c1fe51d451ac27c470a
 """
 
 
@@ -66,14 +68,14 @@ class MaxHeap(object):
 
             self._data[index], self._data[child_index] = self._data[child_index], self._data[index]
             index = child_index
-            child_index = (inndex << 1) + 1
+            child_index = (index << 1) + 1
 
 
 if __name__ == '__main__':
     import random
 
     h = MaxHeap()
-    alist = list(range(9))
+    alist = list(range(10))
     random.shuffle(alist)
     print(alist)
     for i in alist:
