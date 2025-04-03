@@ -1,0 +1,48 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: dev-cluster
+servers: 1
+agents: 4
+kubeAPI:
+  hostPort: "6448"
+
+ports:
+  - port: 9980:80
+    nodeFilters:
+      - loadbalancer
+  - port: 9910:30080
+    nodeFilters:
+      - loadbalancer
+
+registries:
+  config: |
+    mirrors:
+      docker.io:
+        endpoint:
+          - https://docker.m.daocloud.io
+          - dockerpull.pw
+
+      quay.io:
+        endpoint:
+          - https://quay.m.daocloud.io
+
+      gcr.io:
+        endpoint:
+          - https://gcr.m.daocloud.io
+
+      k8s.gcr.io:
+        endpoint:
+          - https://k8s-gcr.m.daocloud.io
+
+      ghcr.io:
+        endpoint:
+          - https://ghcr.m.daocloud.io
+
+      registry.k8s.io:
+        endpoint:
+          - https://k8s.m.daocloud.io
+
+    configs:
+      docker.nju.edu.cn:
+        auth:
