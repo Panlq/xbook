@@ -4347,6 +4347,206 @@ pc-cronjob-1592587920-9dxxq   1/1     Running     0          24s
 cronjob.batch "pc-cronjob" deleted
 ```
 
+## 6.8 StatusfulSet
+
+在 Kubernetes 早期，**Deployment** 适合无状态服务，但无法满足有状态应用的以下需求：
+
+1. **稳定的网络标识**
+   - 问题：Pod 重建后 IP 变化，客户端无法可靠连接。
+   - 解决：每个 Pod 获得唯一的 DNS 名称（如 `mysql-0.mysql`）。
+2. **持久化存储绑定**
+   - 问题：Pod 漂移后数据丢失。
+   - 解决：Pod 与专属存储卷生命周期绑定。
+3. **有序部署/扩缩容**
+   - 问题：数据库主从节点需按顺序启动。
+   - 解决：严格按序号（0→1→2）创建/删除 Pod。
+
+有状态服务本质是将物理服务器的工作模式（固定 IP+专属磁盘）映射到 Kubernetes 的虚拟环境
+
+### 6.8.1 核心功能
+
+| 功能         | 实现机制                                                           |
+| ------------ | ------------------------------------------------------------------ |
+| 稳定网络标识 | 通过 Headless Service 提供 `<pod-name>.<svc-name>` 的 DNS 记录     |
+| 持久化存储   | `volumeClaimTemplates` 自动为每个 Pod 创建带序号的 PVC             |
+| 有序管理     | `podManagementPolicy` 控制启停顺序（`OrderedReady` 或 `Parallel`） |
+| 灰度更新     | `updateStrategy` 支持分阶段滚动更新（基于 `partition` 配置）       |
+
+**与 Deployment 的本质区别**
+
+| **维度**         | **有状态服务 (Stateful)**                      | **无状态服务 (Stateless)**             |
+| ---------------- | ---------------------------------------------- | -------------------------------------- |
+| **身份标识**     | 必须具有唯一且稳定的 Pod 标识（如 mysql-0）    | 无身份要求，Pod 完全可互换             |
+| **数据绑定**     | 数据与 Pod 标识强绑定                          | 数据与 Pod 无绑定关系                  |
+| **存储访问模式** | ReadWriteOnce（独占式访问）                    | ReadWriteMany/ReadOnlyMany（共享访问） |
+| **典型控制器**   | StatefulSet                                    | Deployment                             |
+| **伸缩行为**     | 需要有序扩缩容（逆序终止）                     | 可任意顺序创建/销毁                    |
+| 实例互换性       | 特定请求必须路由到特定实例(即不能使用负载均衡) | 任何实例均可处理任何请求(可负载均衡)   |
+
+### 6.8.2 案例
+
+以 mysql 为例
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: "mysql" # 关联的Headless Service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      initContainers:
+        - name: init-mysql
+          image: busybox
+          command: ["sh", "-c", "echo Initializing..."]
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "password"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates: # 动态存储配置
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "ssd"
+        resources:
+          requests:
+            storage: 10Gi
+```
+
+**关键字段说明** ：
+
+- `serviceName`：指定 Headless Service 名称（必须存在）
+- `volumeClaimTemplates`：自动创建 `mysql-data-mysql-0`、`mysql-data-mysql-1` 等 PVC
+- `podManagementPolicy`：默认为 `OrderedReady`（按顺序启动）
+
+### 6.8.3 部署架构说明
+
+![1743959667838](Kubenetes.assets/1743959667838.png)
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffd8d8', 'edgeLabelBackground':'#ffffff'}}}%%
+flowchart TD
+    %% ========== 集群边界 ==========
+    subgraph Kubernetes-Cluster["Kubernetes Cluster (Namespace: default)"]
+        direction TB
+
+        %% ----- Headless Service -----
+        subgraph Service["Headless Service (mysql)"]
+            direction LR
+            SVC_Type["Type: ClusterIP<br>clusterIP: None"]
+        end
+
+        %% ----- StatefulSet Pods -----
+        subgraph StatefulSet["StatefulSet (mysql)"]
+            direction TB
+            Pod0["Pod: mysql-0<br>(主节点)"]
+            Pod1["Pod: mysql-1<br>(从节点)"]
+            Pod2["Pod: mysql-2<br>(从节点)"]
+        end
+
+        %% ----- 持久化存储 -----
+        subgraph Storage["Persistent Storage"]
+            direction LR
+            PVC0["PVC: mysql-data-mysql-0<br>StorageClass: ssd<br>10Gi RWX"]
+            PVC1["PVC: mysql-data-mysql-1<br>StorageClass: ssd<br>10Gi RWX"]
+            PVC2["PVC: mysql-data-mysql-2<br>StorageClass: ssd<br>10Gi RWX"]
+
+            PV0[(PV: vol-aaa<br>Local SSD)]
+            PV1[(PV: vol-bbb<br>Local SSD)]
+            PV2[(PV: vol-ccc<br>Local SSD)]
+        end
+    end
+
+    %% ========== 连接关系 ==========
+    %% 客户端访问
+    Client["Client App"] -->|"mysql-0.mysql.default.svc.cluster.local:3306"| Service
+
+    %% Service到Pod的DNS解析
+    Service -->|"稳定DNS记录"| Pod0
+    Service -->|"稳定DNS记录"| Pod1
+    Service -->|"稳定DNS记录"| Pod2
+
+    %% Pod与存储绑定
+    Pod0 -->|"volumeMounts"| PVC0
+    Pod1 -->|"volumeMounts"| PVC1
+    Pod2 -->|"volumeMounts"| PVC2
+
+    PVC0 -->|"绑定"| PV0
+    PVC1 -->|"绑定"| PV1
+    PVC2 -->|"绑定"| PV2
+
+    %% 数据同步
+    Pod0 -.->|"binlog复制"| Pod1
+    Pod0 -.->|"binlog复制"| Pod2
+
+    %% 控制平面
+    K8s-Control["K8s Control Plane"] --> |"1.管理Pod生命周期"| StatefulSet
+    StatefulSet -->|"2.volumeClaimTemplates"| Storage
+
+    %% ========== 样式定义 ==========
+    classDef pod fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef service fill:#bbf,stroke:#333,stroke-dasharray: 5 5;
+    classDef storage fill:#9f9,stroke:#333,stroke-width:2px;
+    classDef client fill:#f96,stroke:#333;
+    classDef pv fill:#cfc,stroke:#090,dashed;
+
+    class Pod0,Pod1,Pod2 pod
+    class Service service
+    class PVC0,PVC1,PVC2 storage
+    class PV0,PV1,PV2 pv
+    class Client client
+
+
+```
+
+扩容操作
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant K8s
+    participant Storage
+
+    Admin->>K8s: kubectl scale sts mysql --replicas=4
+    K8s->>Storage: 自动创建PVC mysql-data-mysql-3
+    Storage-->>K8s: 绑定PV vol-ddd
+    K8s->>K8s: 创建Pod mysql-3
+    K8s->>Pod3: 挂载PVC mysql-data-mysql-3
+    Pod3-->>K8s: 状态变为Ready
+```
+
+故障恢复
+
+```mermaid
+sequenceDiagram
+    participant Node
+    participant K8s
+    participant Pod
+
+    Node->>Pod2: 物理节点宕机（mysql-2下线）
+    K8s->>K8s: 检测Pod异常
+    K8s->>Storage: 查询原PVC mysql-data-mysql-2
+    K8s->>K8s: 在新节点重建Pod mysql-2
+    K8s->>Pod2_New: 挂载原PVC
+    Pod2_New-->>K8s: 自动加入MySQL复制组
+```
+
 # 7. Service 详解
 
 ## 7.1 Service 介绍
