@@ -789,6 +789,6 @@ func getResourceHandler(scope *RequestScope, getter getterFunc) http.HandlerFunc
 
 ![1744105919353](image/readme/1744105919353.png)
 
-# 参考及延伸阅读
+# 4. 参考及延伸阅读
 
 [1. 一文读懂 Kubernetes APIServer 原理](https://www.cnblogs.com/tencent-cloud-native/p/14301277.html "发布于 2021-01-20 09:46")
