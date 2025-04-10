@@ -1,0 +1,39 @@
+apiVersion: flowcontrol.apiserver.k8s.io/v1beta3
+kind: FlowSchema
+metadata:
+  name: apffl
+spec:
+  matchingPrecedence: 150
+  priorityLevelConfiguration:
+    name: apfpl ## 关联名为apfpl的PriorityLevelConfiguration
+  rules:
+    - resourceRules:
+        - apiGroups:
+            - apps
+          clusterScope: true
+          namespaces:
+            - apf ## 匹配apf命名空间
+          resources:
+            - deployments ## 匹配操作deployment的请求
+          verbs:
+            - "*" ## 匹配任意操作类型
+      subjects:
+        - kind: Group
+          group:
+            name: "*" ## 匹配任意组身份
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1beta3
+kind: PriorityLevelConfiguration
+metadata:
+  name: apfpl
+spec:
+  limited:
+    lendablePercent: 50
+    nominalConcurrencyShares: 2
+    limitResponse: ## 设置限流处理细节
+      queuing:
+        handSize: 1
+        queueLengthLimit: 20
+        queues: 2
+      type: Queue
+  type: Limited
