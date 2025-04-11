@@ -10,4 +10,5 @@
 # TODO
 
 1. aggregatorServer
-2. 多版本 API 自由转换兼容
+2. CRD
+3. 多版本 API 自由转换兼容

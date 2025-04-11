@@ -419,6 +419,10 @@ cmd/kube-apiserver/apiserver.go
 
 ## 三种 APIServer
 
+![1744297608692](image/从一个GET请求入手学习k8s-apiserver/1744297608692.png)
+
+Fig. kube-apiserver internal flows when processing a request. Image source [Programming Kubernetes, O&#39;Reilly](https://www.oreilly.com/library/view/programming-kubernetes/9781492047094/ch04.html)
+
 ```go
 
 // CreateServerChain creates the apiservers connected via delegation.
@@ -448,7 +452,7 @@ func CreateServerChain(config CompletedConfig) (*aggregatorapiserver.APIAggregat
 
 - apiExtensiionServer: 负责 CustomResourceDefinition (CRD) apiResources 以及 apiVersions 的注册。同时处理 CRD 以及响应的 CustomResource (CR) 的 CURD rest 请求
 - kuberAPIServer: 负责对请求的一些通用处理，包括：认证、鉴权以及各个内建资源(pod, deployment，service and etc)的 REST 服务
-- aggregatorServer: 负责处理 `apiregistration.k8s.io` 组下的 APIService 资源请求，同时将来自用户的请求拦截转发给 aggregated server(AA)。是 apiserver Delegation 的最后一环
+- aggregatorServer: 负责处理 `apiregistration.k8s.io` 组下的 APIService 资源请求，同时将来自用户的请求拦截转发给 aggregated server(AA)。将外部服务（如 Metrics Server、Service Mesh 控制面）的 API **透明聚合**到 kube-apiserver 的 URL 路径下。是 apiserver Delegation 的最后一环
 
 ## kubeAPIServer
 
