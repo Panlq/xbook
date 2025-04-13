@@ -1,5 +1,7 @@
 # 概述
 
+![1744509577221](image/kubelet源码解析/1744509577221.png)
+
 # 参考与延伸阅读
 
 1. [Kubelet 组件解析](https://blog.csdn.net/jettery/article/details/78891733)

@@ -519,3 +519,4 @@ Pod 状态同步流程描述了 Provider 如何将 Pod 的最新状态异步通�
 2. [阿里云弹性容器实例（Elastic Container Instance）](https://help.aliyun.com/zh/eci/product-overview/what-is-elastic-container-instance?spm=a2c4g.11186623.help-menu-87486.d_0_0_0.233d44bbvDKLHo)
 3. [kubernetes 基于 virtual-kubelet 实现弹性 Pod](https://luanlengli.github.io/2020/11/10/kubernetes%E5%9F%BA%E4%BA%8Evirtual-kubelet%E5%AE%9E%E7%8E%B0%E5%BC%B9%E6%80%A7Pod.html)
 4. [深究 Virtual-Kubelet 源码](https://zhuanlan.zhihu.com/p/621485573)
+5. [华为云基于 K8S 构建企业级 Serverless Container 平台实践](http://mp.weixin.qq.com/s?__biz=MzU1OTAzNzc5MQ==&mid=2247486452&idx=1&sn=76db917f8338a6984a977466e4eab7b2&chksm=fc1c27c4cb6baed2460e40dcdf2edc0b2a5109a01aa2db9ed9774dedfc59e6df46e636f59bab&scene=21#wechat_redirect)
