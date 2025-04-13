@@ -282,4 +282,4 @@ kubeadm 将用[于控制平面组件的静态 Pod 清单文件](https://kubernet
 3. [Kubelet 中的 “PLEG is not healthy” 到底是个什么鬼？](https://cloud.tencent.com/developer/article/1550038?policyId=1003)
 4. [Kubelet 组件解析](https://blog.csdn.net/jettery/article/details/78891733)
 5. [微软资深工程师详解 K8S 容器运行时](https://mp.weixin.qq.com/s/Zpvp_or3k23vSMRCLmYNFg)
-6. [Kubelet Deep Dive--techiescamp ](1. https://blog.techiescamp.com/docs/kubelet-deep-dive/)
+6. [Kubelet Deep Dive--techiescamp ](https://blog.techiescamp.com/docs/kubelet-deep-dive/)
