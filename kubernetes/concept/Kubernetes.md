@@ -11,13 +11,13 @@ Kubernetes
   > 优点：简单，不需要其它技术的参与
   >
   > 缺点：不能为应用程序定义资源使用边界，很难合理地分配计算资源，而且程序之间容易产生影响
-
+  >
 - **虚拟化部署**：可以在一台物理机上运行多个虚拟机，每个虚拟机都是独立的一个环境
 
   > 优点：程序环境不会相互产生影响，提供了一定程度的安全性
   >
   > 缺点：增加了操作系统，浪费了部分资源
-
+  >
 - **容器化部署**：与虚拟化类似，但是共享了操作系统
 
   > 优点：
@@ -27,6 +27,7 @@ Kubernetes
   > 运行应用程序所需要的资源都被容器包装，并和底层基础架构解耦
   >
   > 容器化的应用程序可以跨云服务商、跨 Linux 操作系统发行版进行部署
+  >
 
 ![image-20200505183738289](Kubenetes.assets/image-20200505183738289.png)
 
@@ -91,12 +92,10 @@ kubernetes 的本质是**一组服务器集群**，它可以在集群的每个�
 3. apiServer 组件会调用 scheduler 组件来决定到底应该把这个服务安装到哪个 node 节点上
 
    在此时，它会从 etcd 中读取各个 node 节点的信息，然后按照一定的算法进行选择，并将结果告知 apiServer
-
 4. apiServer 调用 controller-manager 去调度 Node 节点安装 nginx 服务
 5. kubelet 接收到指令后，会通知 docker，然后由 docker 来启动一个 nginx 的 pod
 
    pod 是 kubernetes 的最小操作单元，容器必须跑在 pod 中至此，
-
 6. 一个 nginx 服务就运行了，如果需要访问 nginx，就需要通过 kube-proxy 来对 pod 产生访问的代理
 
 这样，外界用户就可以访问集群中的 nginx 服务了
@@ -787,11 +786,9 @@ address: [顺义,昌平]
 - 命令式对象管理：直接使用命令去操作 kubernetes 资源
 
   `kubectl run nginx-pod --image=nginx:1.17.1 --port=80`
-
 - 命令式对象配置：通过命令配置和配置文件去操作 kubernetes 资源
 
   `kubectl create/patch -f nginx-pod.yaml`
-
 - 声明式对象配置：通过 apply 命令和配置文件去操作 kubernetes 资源
 
   `kubectl apply -f nginx-pod.yaml`
@@ -1345,7 +1342,6 @@ Label Selector 用于查询和筛选拥有某些标签的资源对象
   name = slave: 选择所有包含 Label 中 key="name"且 value="slave"的对象
 
   env != production: 选择所有包括 Label 中的 key="env"且 value 不等于"production"的对象
-
 - 基于集合的 Label Selector
 
   name in (master, slave): 选择所有包含 Label 中的 key="name"且 value="master"或"slave"的对象
@@ -2175,8 +2171,8 @@ Warning  FailedScheduling  35s   default-scheduler  0/3 nodes are available: 1 n
 4. kubelet 在监控到 pod 对象转为 terminating 状态的同时启动 pod 关闭过程
 5. 端点控制器监控到 pod 对象的关闭行为时将其从所有匹配到此端点的 service 资源的端点列表中移除
 6. 如果当前 pod 对象定义了 preStop 钩子处理器，则在其标记为 terminating 后即会以同步的方式启动执行
-7. pod 对象中的容器进程收到停止信号
-8. 宽限期结束后，若 pod 中还存在仍在运行的进程，那么 pod 对象会收到立即终止的信号
+7. pod 对象中的容器进程收到停止信号 (kill -1 sigterm)
+8. 宽限期结束后，若 pod 中还存在仍在运行的进程，那么 pod 对象会收到立即终止的信号(kill -9 sigkill)
 9. kubelet 请求 apiServer 将此 pod 资源的宽限期设置为 0 从而完成删除操作，此时 pod 对于用户已不可见
 
 ### 5.3.2 初始化容器
@@ -2285,7 +2281,6 @@ kubernetes 在主容器的启动之后和停止之前提供了两个钩子函数
           - /tmp/healthy
   ……
   ```
-
 - TCPSocket：在当前容器尝试访问指定的 socket
 
   ```yaml
@@ -2296,7 +2291,6 @@ kubernetes 在主容器的启动之后和停止之前提供了两个钩子函数
           port: 8080
   ……
   ```
-
 - HTTPGet：在当前容器中向某 url 发起 http 请求
 
   ```yaml
@@ -2377,7 +2371,6 @@ postStart...
         - /tmp/healthy
   ……
   ```
-
 - TCPSocket：将会尝试访问一个用户容器的端口，如果能够建立这条连接，则认为程序正常，否则不正常
 
   ```yaml
@@ -2387,7 +2380,6 @@ postStart...
         port: 8080
   ……
   ```
-
 - HTTPGet：调用容器内 Web 应用的 URL，如果返回的状态码在 200 和 399 之间，则认为程序正常，否则不正常
 
   ```yaml
@@ -3288,7 +3280,6 @@ spec: # 详情描述
 - selector：选择器，它的作用是建立 pod 控制器和 pod 之间的关联关系，采用的 Label Selector 机制
 
   在 pod 模板上定义 label，在控制器上定义选择器，就可以表明当前控制器能管理哪些 pod 了
-
 - template：模板，就是当前控制器创建 pod 所使用的模板板，里面其实就是前一章学过的 pod 的定义
 
 **创建 ReplicaSet**
@@ -4365,23 +4356,23 @@ cronjob.batch "pc-cronjob" deleted
 
 ### 6.8.1 核心功能
 
-| 功能         | 实现机制                                                           |
-| ------------ | ------------------------------------------------------------------ |
-| 稳定网络标识 | 通过 Headless Service 提供 `<pod-name>.<svc-name>` 的 DNS 记录     |
-| 持久化存储   | `volumeClaimTemplates` 自动为每个 Pod 创建带序号的 PVC             |
+| 功能         | 实现机制                                                                 |
+| ------------ | ------------------------------------------------------------------------ |
+| 稳定网络标识 | 通过 Headless Service 提供 `<pod-name>.<svc-name>` 的 DNS 记录         |
+| 持久化存储   | `volumeClaimTemplates` 自动为每个 Pod 创建带序号的 PVC                 |
 | 有序管理     | `podManagementPolicy` 控制启停顺序（`OrderedReady` 或 `Parallel`） |
-| 灰度更新     | `updateStrategy` 支持分阶段滚动更新（基于 `partition` 配置）       |
+| 灰度更新     | `updateStrategy` 支持分阶段滚动更新（基于 `partition` 配置）         |
 
 **与 Deployment 的本质区别**
 
-| **维度**         | **有状态服务 (Stateful)**                      | **无状态服务 (Stateless)**             |
-| ---------------- | ---------------------------------------------- | -------------------------------------- |
+| **维度**         | **有状态服务 (Stateful)**                | **无状态服务 (Stateless)**       |
+| ---------------------- | ---------------------------------------------- | -------------------------------------- |
 | **身份标识**     | 必须具有唯一且稳定的 Pod 标识（如 mysql-0）    | 无身份要求，Pod 完全可互换             |
 | **数据绑定**     | 数据与 Pod 标识强绑定                          | 数据与 Pod 无绑定关系                  |
 | **存储访问模式** | ReadWriteOnce（独占式访问）                    | ReadWriteMany/ReadOnlyMany（共享访问） |
 | **典型控制器**   | StatefulSet                                    | Deployment                             |
 | **伸缩行为**     | 需要有序扩缩容（逆序终止）                     | 可任意顺序创建/销毁                    |
-| 实例互换性       | 特定请求必须路由到特定实例(即不能使用负载均衡) | 任何实例均可处理任何请求(可负载均衡)   |
+| 实例互换性             | 特定请求必须路由到特定实例(即不能使用负载均衡) | 任何实例均可处理任何请求(可负载均衡)   |
 
 ### 6.8.2 案例
 
@@ -4963,7 +4954,7 @@ Ingress（以 Nginx 为例）的工作原理如下：
 
 1. 用户编写 Ingress 规则，说明哪个域名对应 kubernetes 集群中的哪个 Service
 2. Ingress 控制器动态感知 Ingress 服务规则的变化，然后生成一段对应的 Nginx 反向代理配置
-3. Ingress 控制器会将生成的 Nginx 配置写入到一个运行着的 Nginx 服务中，并动态更新
+3. Ingress 控制器会将生成的 Nginx 配置写入到一个运行着的 Nginx 服务中，并动态更新 （nginx-ingress-controller所管理的 Nginx 服务是不需要重新加载（reload）的。这当然是因为nginx-ingress-controller通过[Nginx Lua](https://github.com/openresty/lua-nginx-module)方案实现了Nginx Upstream的动态配置）
 4. 到此为止，其实真正在工作的就是一个 Nginx 了，内部配置了用户定义的请求转发规则
 
 ![img](Kubenetes.assets/image-20200516112704764.png)
@@ -5491,7 +5482,6 @@ PV 的关键配置参数说明：
 - **存储类型**
 
   底层实际存储的类型，kubernetes 支持多种存储类型，每种存储类型的配置都有所差异
-
 - **存储能力（capacity）**
 
 目前只支持存储空间的设置( storage=1Gi )，不过未来可能会加入 IOPS、吞吐量等指标的配置
@@ -5505,7 +5495,6 @@ PV 的关键配置参数说明：
   - ReadWriteMany（RWX）：读写权限，可以被多个节点挂载
 
   `需要注意的是，底层不同的存储类型可能支持的访问模式不同`
-
 - **回收策略（persistentVolumeReclaimPolicy）**
 
   当 PV 不再被使用了之后，对其的处理方式。目前支持三种策略：
@@ -5515,14 +5504,12 @@ PV 的关键配置参数说明：
   - Delete （删除） 与 PV 相连的后端存储完成 volume 的删除操作，当然这常见于云服务商的存储服务
 
   `需要注意的是，底层不同的存储类型可能支持的回收策略不同`
-
 - **存储类别**
 
   PV 可以通过 storageClassName 参数指定一个存储类别
 
   - 具有特定类别的 PV 只能与请求了该类别的 PVC 进行绑定
   - 未设定类别的 PV 则只能与不请求任何类别的 PVC 进行绑定
-
 - **状态（status）**
 
   一个 PV 的生命周期中，可能会处于 4 中不同的阶段：
@@ -5643,11 +5630,9 @@ PVC 的关键配置参数说明：
 - **选择条件（selector）**
 
   通过 Label Selector 的设置，可使 PVC 对于系统中己存在的 PV 进行筛选
-
 - **存储类别（storageClassName）**
 
   PVC 在定义时可以设定需要的后端存储的类别，只有设置了该 class 的 pv 才能被系统选出
-
 - **资源请求（Resources ）**
 
   描述对存储资源的请求
@@ -5816,15 +5801,12 @@ PVC 和 PV 是一一对应的，PV 和 PVC 之间的相互作用遵循以下生�
   - 如果找不到，PVC 则会无限期处于 Pending 状态，直到等到系统管理员创建了一个符合其要求的 PV
 
   PV 一旦绑定到某个 PVC 上，就会被这个 PVC 独占，不能再与其他 PVC 进行绑定了
-
 - **资源使用**：用户可在 pod 中像 volume 一样使用 pvc
 
   Pod 使用 Volume 的定义，将 PVC 挂载到容器内的某个路径进行使用。
-
 - **资源释放**：用户删除 pvc 来释放 pv
 
   当存储资源使用完毕后，用户可以删除 PVC，与该 PVC 绑定的 PV 将会被标记为“已释放”，但还不能立刻与其他 PVC 进行绑定。通过之前 PVC 写入的数据可能还被留在存储设备上，只有在清除之后该 PV 才能再次使用。
-
 - **资源回收**：kubernetes 根据 pv 设置的回收策略进行资源的回收
 
   对于 PV，管理员可以设定回收策略，用于设置与之绑定的 PVC 释放资源之后如何处理遗留数据的问题。只有 PV 的存储空间完成回收，才能供新的 PVC 绑定和使用
@@ -6042,13 +6024,11 @@ Kubernetes 集群安全的最关键点在于如何识别并认证客户端身份
   ```
       这种认证方式是把“用户名:密码”用BASE64算法进行编码后的字符串放在HTTP请求中的Header Authorization域里发送给服务端。服务端收到后进行解码，获取用户名及密码，然后进行用户身份认证的过程。
   ```
-
 - HTTP Token 认证：通过一个 Token 来识别合法用户
 
   ```
       这种认证方式是用一个很长的难以被模仿的字符串--Token来表明客户身份的一种方式。每个Token对应一个用户名，当客户端发起API调用请求时，需要在HTTP Header里放入Token，API Server接到Token后会跟服务器中保存的token进行比对，然后进行用户身份认证的过程。
   ```
-
 - HTTPS 证书认证：基于 CA 根证书签名的双向数字证书认证方式
 
   ```
@@ -6064,7 +6044,6 @@ Kubernetes 集群安全的最关键点在于如何识别并认证客户端身份
    ```
      HTTPS通信双方的服务器向CA机构申请证书，CA机构下发根证书、服务端证书及私钥给申请者
    ```
-
 2. 客户端和服务端的双向认证
 
    ```
@@ -6074,7 +6053,6 @@ Kubernetes 集群安全的最关键点在于如何识别并认证客户端身份
      2> 客户端发送自己的证书给服务器端，服务端接收到证书后，通过私钥解密证书，
         在证书中获得客户端的公钥，并用该公钥认证证书信息，确认客户端是否合法
    ```
-
 3. 服务器端和客户端进行通信
 
    ```
@@ -6150,7 +6128,6 @@ rules:
   ```
   "","apps", "autoscaling", "batch"
   ```
-
 - resources：支持的资源对象列表
 
   ```
@@ -6158,7 +6135,6 @@ rules:
   "nodes","rolebindings","clusterroles","daemonsets","replicasets","statefulsets",
   "horizontalpodautoscalers","replicationcontrollers","cronjobs"
   ```
-
 - verbs：对资源对象的操作方法列表
 
   ```
