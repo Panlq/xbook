@@ -450,9 +450,9 @@ func CreateServerChain(config CompletedConfig) (*aggregatorapiserver.APIAggregat
 }
 ```
 
-- apiExtensiionServer: 负责 CustomResourceDefinition (CRD) apiResources 以及 apiVersions 的注册。同时处理 CRD 以及响应的 CustomResource (CR) 的 CURD rest 请求
+- apiExtensiionServer: 负责 CustomResourceDefinition (CRD) apiResources 以及 apiVersions 的注册。同时处理 CRD 以及响应的 CustomResource (CR) 的 CURD rest 请求。是 apiserver Delegation 的最后一环
 - kuberAPIServer: 负责对请求的一些通用处理，包括：认证、鉴权以及各个内建资源(pod, deployment，service and etc)的 REST 服务
-- aggregatorServer: 负责处理 `apiregistration.k8s.io` 组下的 APIService 资源请求，同时将来自用户的请求拦截转发给 aggregated server(AA)。将外部服务（如 Metrics Server、Service Mesh 控制面）的 API **透明聚合**到 kube-apiserver 的 URL 路径下。是 apiserver Delegation 的最后一环
+- aggregatorServer: 负责处理 `apiregistration.k8s.io` 组下的 APIService 资源请求，同时将来自用户的请求拦截转发给 aggregated server(AA)。将外部服务（如 Metrics Server、Service Mesh 控制面）的 API **透明聚合**到 kube-apiserver 的 URL 路径下。
 
 ## kubeAPIServer
 
