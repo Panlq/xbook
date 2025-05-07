@@ -23,23 +23,91 @@ TODO:
 - hash 函数，选择散列均匀的 hash 函数可以避免稀疏
 - 如何处理哈希冲突
 - 溢出后如何扩容
+- rehash 过程
 
-go 语言的 map，底层是一个
+go 语言的 map，底层是一个 hmap
+
+```go
+// A header for a Go map.
+type hmap struct {
+    // 元素个数，调用 len(map) 时，直接返回此值
+	count     int
+	flags     uint8
+	// buckets 的对数 log_2
+	B         uint8
+	// overflow 的 bucket 近似数
+	noverflow uint16
+	// 计算 key 的哈希的时候会传入哈希函数
+	hash0     uint32
+    // 指向 buckets 数组，大小为 2^B
+    // 如果元素个数为0，就为 nil
+	buckets    unsafe.Pointer
+	// 等量扩容的时候，buckets 长度和 oldbuckets 相等
+	// 双倍扩容的时候，buckets 长度会是 oldbuckets 的两倍
+	oldbuckets unsafe.Pointer
+	// 指示扩容进度，小于此地址的 buckets 迁移完成
+	nevacuate  uintptr
+	extra *mapextra // optional fields
+}
+```
+
+### 底层存储结构
+
+![img](https://golang.design/go-questions/map/assets/0.png)
+
+### 哈希过程
+
+![img](https://golang.design/go-questions/map/assets/2.png)
 
 哈希表存储 假设桶容量为 m
 
 桶索引取值方法：
 
 1. 取模法: hash % m
-2. 与运算: hash & (m-1)
+2. 与运算: hash & (m-1) 前提：m 必须是 2 的幂
 
-hash 冲突解决办法：开放地址发，拉链法
+详细分析可参考: [按位与运算替换取模计算](../../算法/按位与运算替换取模计算.md)
+
+### 哈希冲突
+
+hash 冲突解决办法：
+
+- 开链法（链地址法)：使用链表将多个哈希值相同的节点串连在一起，从而解决冲突问题，redis 的哈希表就是用这种方式，golang map，Java hashmap 也是这种方式，
+- 开放地址法：包括线性探测法，二次探测法，伪随机探测法，通过线性函数逐步探测可用的地址，因为函数一样所以插入或查询计算的结果肯定是一样的
+- 再哈希法：使用另一个哈希函数计算新的地址，直到不发生冲突
+
+**两种解决方案比较**
+
+对于链地址法，基于数组 + 链表进行存储，链表节点可以在需要时再创建，不必像开放寻址法那样事先申请好足够内存，因此链地址法对于内存的利用率会比开方寻址法高。链地址法对装载因子的容忍度会更高，并且适合存储大对象、大数据量的哈希表。而且相较于开放寻址法，它更加灵活，支持更多的优化策略，比如可采用[红黑树](https://zhida.zhihu.com/search?content_id=234870507&content_type=Article&match_order=1&q=%E7%BA%A2%E9%BB%91%E6%A0%91&zhida_source=entity)代替链表。但是链地址法需要额外的空间来存储指针。
+
+对于开放寻址法，它只有数组一种数据结构就可完成存储，继承了数组的优点，易于实现，对 CPU 缓存友好，易于序列化操作。但是它对内存的利用率不如链地址法，且发生冲突时代价更高。**当数据量明确、装载因子小，适合采用开放寻址法。**
+
+golang map 处理哈希冲突的方式是链地址法：具体就是 **插入 key 到 map 中时** ，当 key 定位的桶 **填满 8 个元素后** （这里的单元就是桶，不是元素），将会创建一个溢出桶，并且将溢出桶插入当前桶所在链表尾部。
+
+```go
+if inserti == nil {
+        // all current buckets are full, allocate a new one.
+        newb := h.newoverflow(t, b)
+        // 创建一个新的溢出桶
+        inserti = &newb.tophash[0]
+        insertk = add(unsafe.Pointer(newb), dataOffset)
+        elem = add(insertk, bucketCnt*uintptr(t.keysize))
+}
+```
+
+### 扩容规则
 
 当 hash 表存储内容超过负载因子后，会进行扩容，有增量扩容和等量扩容
 
 负载因子：load factor = count / m
 
+渐进式扩容：逐步的将旧桶的数据迁移到新桶，并非一次性，减小迁移影响
+
+![1746601601556](image/深入探索go语言/1746601601556.png)
+
 ### 为什么需要等量扩容？
+
+![1746601255689](image/深入探索go语言/1746601255689.png)
 
 解决当删除很多 key 导致桶内存排列稀疏，存在太多溢出桶，等量扩容重新排列后数据会更加紧凑，减少溢出桶
 
@@ -1539,9 +1607,9 @@ Go 内建的函数 close、cap、len 都可以操作 chan 类型：close 会把 
 type hchan struct {
 	// chan 里元素数量
 	qcount   uint
-	// chan 底层循环数组的长度
+	// chan 底层环形数组的长度
 	dataqsiz uint
-	// 指向底层循环数组的指针
+	// 指向底层循环形组的指针
 	// 只针对有缓冲的 channel
 	buf      unsafe.Pointer
 	// chan 中元素大小
@@ -1550,9 +1618,9 @@ type hchan struct {
 	closed   uint32
 	// chan 中元素类型
 	elemtype *_type // element type
-	// 已发送元素在循环数组中的索引
+	// 已发送元素在环形数组中的索引
 	sendx    uint   // send index
-	// 已接收元素在循环数组中的索引
+	// 已接收元素在环形数组中的索引
 	recvx    uint   // receive index
 	// 等待接收的 goroutine 队列,  waitq是一个双向链表
 	recvq    waitq  // list of recv waiters
@@ -1564,9 +1632,9 @@ type hchan struct {
 }
 ```
 
-`buf` 指向底层循环数组，只有缓冲型的 channel 才有。
+`buf` 指向底层环形数组，只有缓冲型的 channel 才有。
 
-`sendx`，`recvx` 均指向底层循环数组，表示当前可以发送和接收的元素位置索引值（相对于底层数组）。
+`sendx`，`recvx` 均指向底层环形数组，表示当前可以发送和接收的元素位置索引值（相对于底层数组）。
 
 `sendq`，`recvq` 分别表示被阻塞的 goroutine，这些 goroutine 由于尝试读取 channel 或向 channel 发送数据而被阻塞。
 
