@@ -68,6 +68,7 @@ LISTEN     0      128    127.0.0.1:10248                    *:*                 
   - APIServer: kubelet watch apiserver pod 变更事件
   - file: 静态 pod ([static pod](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/static-pod/))，如 `/etc/kubernetes/manifests/xx.yaml` 下的静态文件
   - http: 自建 http 服务，调用 kube
+
 - syncLoop 负责监听 Pod 的状态变更，推送事件到队列，worker 监听消费事件，针对每个 pod 做 syncPod。
 - PLEG：主要负责 Pod 状态的上报，PLEG 内部维护了 `pod cache`, PLEG 会定期往 `container runtime`内部去发送一个 `list`的操作，来获取当前节点上的 Pod 清单，在内部做汇聚，最终通过 `pod lifeccle events`发回上报给 api-server
 
@@ -268,6 +269,7 @@ kubeadm 将用[于控制平面组件的静态 Pod 清单文件](https://kubernet
 
   - 控制器管理器和调度器用来调用 API 服务器的地址为 `127.0.0.1`
   - 如果在本地设置 etcd 服务器，`etcd-servers` 地址将被设置为 `127.0.0.1:2379`
+
 - 同时为控制器管理器和调度器启用了领导者选举
 - 控制器管理器和调度器将引用 kubeconfig 文件及其各自的唯一标识
 - 如[将自定义参数传递给控制平面组件](https://kubernetes.io/zh-cn/docs/setup/production-environment/tools/kubeadm/control-plane-flags/) 中所述，所有静态 Pod 都会获得用户指定的额外标志或补丁
@@ -281,4 +283,5 @@ kubeadm 将用[于控制平面组件的静态 Pod 清单文件](https://kubernet
 4. [Kubelet 组件解析](https://blog.csdn.net/jettery/article/details/78891733)
 5. [微软资深工程师详解 K8S 容器运行时](https://mp.weixin.qq.com/s/Zpvp_or3k23vSMRCLmYNFg)
 6. [Kubelet Deep Dive--techiescamp ](https://blog.techiescamp.com/docs/kubelet-deep-dive/)
-7. [Pod Lifecycle Event Generator: Understanding the &#34;PLEG is not healthy&#34; issue in Kubernetes](https://developers.redhat.com/blog/2019/11/13/pod-lifecycle-event-generator-understanding-the-pleg-is-not-healthy-issue-in-kubernetes#)
+7. [The Almighty Pause Container](https://www.ianlewis.org/en/almighty-pause-container)
+8. [Pod Lifecycle Event Generator: Understanding the &#34;PLEG is not healthy&#34; issue in Kubernetes](https://developers.redhat.com/blog/2019/11/13/pod-lifecycle-event-generator-understanding-the-pleg-is-not-healthy-issue-in-kubernetes#)
