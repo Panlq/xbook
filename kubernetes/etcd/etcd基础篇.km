@@ -1,0 +1,558 @@
+{
+    "root": {
+        "data": {
+            "id": "d34bmkdr3bc0",
+            "created": 1722489665684,
+            "text": "etcd基础"
+        },
+        "children": [
+            {
+                "data": {
+                    "id": "d34boy86u880",
+                    "created": 1722489852551,
+                    "text": "基础架构"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34bpupgoyo0",
+                            "created": 1722489923252,
+                            "text": "架构演进"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "d34bpy261880",
+                                    "created": 1722489930551,
+                                    "text": "v2"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "d34bq28ef3c0",
+                                    "created": 1722489939635,
+                                    "text": "v3"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "d34bq3fpy0g0",
+                            "created": 1722489942254,
+                            "text": "读流程"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34bq6azcxc0",
+                            "created": 1722489948498,
+                            "text": "写流程"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bozdyxyg0",
+                    "created": 1722489855077,
+                    "text": "Raft原理"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34bq9o2gu00",
+                            "created": 1722489955819,
+                            "text": "Leader选举"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34bqc3au6o0",
+                            "created": 1722489961094,
+                            "text": "日志复制"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34bqd8gb4o0",
+                            "created": 1722489963582,
+                            "text": "安全性"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bp2uib7k0",
+                    "created": 1722489862607,
+                    "text": "鉴权体系"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34bqg0zn880",
+                            "created": 1722489969661,
+                            "text": "密码鉴权"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34bqj8ogq80",
+                            "created": 1722489976657,
+                            "text": "证书鉴权"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34bqo6h23c0",
+                            "created": 1722489987407,
+                            "text": "TokenProvider"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "d34bqt40oxs0",
+                                    "created": 1722489998143,
+                                    "text": "simple token"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d34brl0n4zk0",
+                                            "created": 1722490058889,
+                                            "text": "有状态的，数据存储在服务端"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "d34bqv13az40",
+                                    "created": 1722490002319,
+                                    "text": " JWT"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d34gpaer3kw0",
+                                            "created": 1722503984618,
+                                            "text": "无状态"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "d34bqsci99c0",
+                            "created": 1722489996479,
+                            "text": "RBAC"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "d34bqxz9wfk0",
+                                    "created": 1722490008740,
+                                    "text": "控制用户角色访问的数据点权限"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "d34gph505yw0",
+                                    "created": 1722503999266,
+                                    "text": "角色"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d34gpiegc7s0",
+                                            "created": 1722504002015,
+                                            "text": "admin"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "d34gplu905c0",
+                                    "created": 1722504009500,
+                                    "text": "权限"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d34gpol7fj40",
+                                            "created": 1722504015484,
+                                            "text": "read"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "d34gpv9x1m00",
+                                            "created": 1722504030038,
+                                            "text": "write"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "d34gppkivkg0",
+                                            "created": 1722504017619,
+                                            "text": "readwrite"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bp5hima00",
+                    "created": 1722489868352,
+                    "text": "租约特性"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34pklakoq00",
+                            "created": 1722529006479,
+                            "text": "key如何关联 Lease"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pkrt7im00",
+                            "created": 1722529020666,
+                            "text": "续期性能"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pku1cr9k0",
+                            "created": 1722529025512,
+                            "text": "如何淘汰过期 key"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pkyxfc880",
+                            "created": 1722529036159,
+                            "text": "checkpoint机制有什么用？"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bp7mskwg0",
+                    "created": 1722489873025,
+                    "text": "MVCC机制"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34pl9npxr40",
+                            "created": 1722529059516,
+                            "text": "treeIndex",
+                            "expandState": "expand"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "d9j12e9sz5k0",
+                                    "created": 1745920223992,
+                                    "text": "基于内存版B-tree实现 key索引管理\n保存 key与版本号 revision的映射关系",
+                                    "expandState": "expand"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "d34pl6tsjds0",
+                                    "created": 1722529053353,
+                                    "text": "keyIndex"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "d9j13u2e3uw0",
+                            "created": 1745920336737,
+                            "text": "Backend\n目前后端存储是 blotdb",
+                            "expandState": "expand"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "d9j13w2m3fs0",
+                                    "created": 1745920341104,
+                                    "text": "ReadTx",
+                                    "layout_right_offset": {
+                                        "x": 75.9999987920126,
+                                        "y": -2.9999999523163297
+                                    },
+                                    "expandState": "expand"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d9j142ex2vc0",
+                                            "created": 1745920354908,
+                                            "text": "提供抽象的读事务接口"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "d9j11lmu4000",
+                                            "created": 1745920161654,
+                                            "text": "读事务 ReadTxn"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "d9j1244s4o80",
+                                                    "created": 1745920201921,
+                                                    "text": "range"
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "d9j13xw9oww0",
+                                    "created": 1745920345074,
+                                    "text": "BatchTx",
+                                    "layout_right_offset": {
+                                        "x": 71.999998855591,
+                                        "y": 0
+                                    },
+                                    "expandState": "expand"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d9j14bpidmg0",
+                                            "created": 1745920375140,
+                                            "text": "提供抽象的写事务接口"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "d9j11p7wd0g0",
+                                            "created": 1745920169457,
+                                            "text": "写事务 WriteTxn"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "d9j125sq6ls0",
+                                                    "created": 1745920205545,
+                                                    "text": "put/delete"
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "d9j140996s00",
+                                    "created": 1745920350212,
+                                    "text": "Buffer",
+                                    "layout_right_offset": {
+                                        "x": 75.99999879201255,
+                                        "y": 1.9999999682108864
+                                    }
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "d9j14fs0pm80",
+                                            "created": 1745920383999,
+                                            "text": "数据缓冲区"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "d34plavyul40",
+                                    "created": 1722529062192,
+                                    "text": "backend/boltdb"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bpc338a80",
+                    "created": 1722489882717,
+                    "text": "Watch机制"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34plilvntk0",
+                            "created": 1722529078996,
+                            "text": "轮询&流式推送"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pln14o4g0",
+                            "created": 1722529088625,
+                            "text": "历史版本存储"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34plptmor40",
+                            "created": 1722529094702,
+                            "text": "如何保障推送时间的可靠性"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pltrvy9c0",
+                            "created": 1722529103304,
+                            "text": "高效的事件匹配"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bpfs6mmw0",
+                    "created": 1722489890765,
+                    "text": "事务"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34plycwor40",
+                            "created": 1722529113282,
+                            "text": "Txn API"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pm0dihpc0",
+                            "created": 1722529117672,
+                            "text": "ACID特性在 etcd中的实现"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bphbq1jk0",
+                    "created": 1722489894123,
+                    "text": "blotdb"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34pm6oufyo0",
+                            "created": 1722529131418,
+                            "text": "核心 API"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pm8gzhvc0",
+                            "created": 1722529135296,
+                            "text": "db物理结构"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pma8jlow0",
+                            "created": 1722529139140,
+                            "text": "db逻辑结构"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pmbqmeag0",
+                            "created": 1722529142409,
+                            "text": "事务提交原理"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "d34bpiv59b40",
+                    "created": 1722489897474,
+                    "text": "压缩"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "d34pmfspjao0",
+                            "created": 1722529151243,
+                            "text": "周期"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "d34pmh6v03k0",
+                            "created": 1722529154275,
+                            "text": "版本号"
+                        },
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    },
+    "template": "default",
+    "theme": "fresh-blue",
+    "version": "1.4.43"
+}
