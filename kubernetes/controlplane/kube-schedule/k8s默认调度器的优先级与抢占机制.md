@@ -6,7 +6,7 @@
 
 但在有时候，我们希望的是这样一个场景。当一个高优先级的 Pod 调度失败后，该 Pod 并不会被“搁置”，而是会“挤走”某个 Node 上的一些低优先级的 Pod 。这样就可以保证这个高优先级 Pod 的调度成功。这个特性，其实也是一直以来就存在于 Borg 以及 Mesos 等项目里的一个基本功能。
 
-而在 Kubernetes 里，优先级和抢占机制是在 1.10 版本后才逐步可用的。其资源类型就是 PriorityClass
+而在 Kubernetes 里，优先级和抢占机制是在 1.10 版本后才逐步可用的。其资源类型就是 PriorityClass，集群级对象
 
 ```
 apiVersion: scheduling.k8s.io/v1beta1
@@ -27,7 +27,9 @@ description: "This priority class should be used for high priority service pods 
 
 当一个高优先级的 Pod 调度失败的时候，调度器的抢占能力就会被触发。这时，调度器就会试图从当前集群里寻找一个节点，使得当这个节点上的一个或者多个低优先级 Pod 被删除后，待调度的高优先级 Pod 就可以被调度到这个节点上。**这个过程，就是“抢占”这个概念在 Kubernetes 里的主要体现**
 
-# 2. 调度流程
+> ⚠️：抢占发生的原因，一定是一个高优先级的 Pod 调度失败
+
+# 2. 调度抢占流程
 
 而 Kubernetes 调度器实现抢占算法的一个最重要的设计，就是在调度队列的实现里，使用了两个不同的队列。
 
@@ -86,11 +88,15 @@ sequenceDiagram
 
 **第一步** ，调度器会检查这次失败事件的原因，来确认抢占是不是可以帮助抢占者找到一个新节点。这是因为有很多 Predicates 的失败是不能通过抢占来解决的。比如，PodFitsHost 算法（负责的是，检查 Pod 的 nodeSelector 与 Node 的名字是否匹配），这种情况下，除非 Node 的名字发生变化，否则你即使删除再多的 Pod，抢占者也不可能调度成功。
 
+> 举例说明：
+>
+> 调度失败的 pod, 如果失败原因是 nodeSelector 上标记的 node name 在集群内本身就不存在，那就没必要在发生抢占了
+
 **第二步** ，如果确定抢占可以发生，那么调度器就会把自己缓存的所有节点信息复制一份，然后使用这个副本来模拟抢占过程。
 
 这里的抢占过程很容易理解。调度器会检查缓存副本里的每一个节点，然后从该节点上最低优先级的 Pod 开始，逐一“删除”这些 Pod。而每删除一个低优先级 Pod，调度器都会检查一下抢占者是否能够运行在该 Node 上。一旦可以运行，调度器就记录下这个 Node 的名字和被删除 Pod 的列表，这就是一次抢占过程的结果了。
 
-当遍历完所有的节点之后，调度器会在上述模拟产生的所有抢占结果里做一个选择，找出最佳结果。而这一步的 **判断原则，就是尽量减少抢占对整个系统的影响** 。比如，需要抢占的 Pod 越少越好，需要抢占的 Pod 的优先级越低越好，等等。
+当遍历完所有的节点之后，调度器会在上述模拟产生的所有抢占结果里做一个选择，找出最佳结果。而这一步的 「**判断原则，就是尽量减少抢占对整个系统的影响** 」。比如，需要抢占的 Pod 越少越好，需要抢占的 Pod 的优先级越低越好，等等。
 
 在得到了最佳的抢占结果之后，这个结果里的 Node，就是即将被抢占的 Node；被删除的 Pod 列表，就是牺牲者。所以接下来，**调度器就可以真正开始抢占的操作**了，这个过程，可以分为三步。
 
@@ -118,9 +124,23 @@ sequenceDiagram
 
 由于 InterPodAntiAffinity 规则关心待考察节点上所有 Pod 之间的互斥关系，所以我们在执行调度算法时必须考虑，如果抢占者已经存在于待考察 Node 上时，待调度 Pod 还能不能调度成功。
 
-当然，这也就意味着，我们在这一步只需要考虑那些优先级等于或者大于待调度 Pod 的抢占者。毕竟对于其他较低优先级 Pod 来说，待调度 Pod 总是可以通过抢占运行在待考察 Node 上。
+当然，这也就意味着，我们在这一步只需要考虑那些优先级等于或者大于待调度 Pod 的抢占者。毕竟对于其他较低优先级 Pod 来说，高优先级的待调度 Pod 总是可以通过抢占运行在待考察 Node 上。
+
+> 假设当前调度 podA 的优先级<某个刚被放入调度队列的抢占者 podB，此时在处理 podA 的过滤的时候，如果 podA 与 podB 是反亲和的，那就没必要把 podA 调度进被高优先级抢占者提名了的节点了。
 
 而我们需要执行第二遍 Predicates 算法的原因，则是因为“潜在的抢占者”最后不一定会运行在待考察的 Node 上。关于这一点，我在前面已经讲解过了：Kubernetes 调度器并不保证抢占者一定会运行在当初选定的被抢占的 Node 上。
+
+## 小结
+
+[调度器的抢占逻辑在选择抢占目标时不考虑 QoS](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#interactions-of-pod-priority-and-qos)，仅当移除优先级最低的 Pod 不足以让调度程序调度抢占式 Pod， 或者最低优先级的 Pod 受[ PodDisruptionBudget](https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/disruptions/) 保护时，才会考虑优先级较高的 Pod「当然较高也是要低于抢占者优先级的 pod」.
+
+当上述抢占过程发生时，抢占者并不会立刻被调度到被抢占的 Node 上。事实上，调度器只会将抢占者的 spec.nominatedNodeName 字段，设置为被抢占的 Node 的名字。然后，抢占者会重新进入下一个调度周期，然后在新的调度周期里来决定是不是要运行在被抢占的节点上。这当然也就意味着，即使在下一个调度周期，调度器也不会保证抢占者一定会运行在被抢占的节点上。
+
+这样设计的一个重要原因是，调度器只会通过标准的 DELETE API 来删除被抢占的 Pod，所以，这些 Pod 必然是有一定的“优雅退出”时间（默认是 30s）的。而在这段时间里，其他的节点也是有可能变成可调度的，或者直接有新的节点被添加到这个集群中来。所以，鉴于优雅退出期间，集群的可调度性可能会发生的变化，**把抢占者交给下一个调度周期再处理，是一个非常合理的选择。**
+
+而在抢占者等待被调度的过程中，如果有其他更高优先级的 Pod 也要抢占同一个节点，那么调度器就会清空原抢占者的 spec.nominatedNodeName 字段，[从而允许更高优先级的抢占者执行抢占](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pods-are-preempted-but-the-preemptor-is-not-scheduled)，并且，这也就使得原抢占者本身，也有机会去重新抢占其他节点。这些，都是设置 nominatedNodeName 字段的主要目的。
+
+> [PodDisruptionBudget](https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/disruptions/): 保证 pod 的可用副本数保持固定数量不被干扰。比如某个 deployment rs=3，pdb=2，在集群管理驱逐 清空节点的时候(kubectl drain)会发生阻塞的情况
 
 # 3. 问题
 

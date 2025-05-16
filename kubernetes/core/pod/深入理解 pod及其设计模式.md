@@ -81,7 +81,7 @@
 
 ## 3.2. **共享存储**
 
-**通过 docker volumn 的特性，宿主机上的某个目录可以同时绑定挂在到每个业务容器中，volumn 是 pod level **
+通过 docker volumn 的特性，宿主机上的某个目录可以同时绑定挂在到每个业务容器中，volumn 是 pod level
 
 ```yaml
 apiVersion: v1
@@ -112,13 +112,13 @@ spec:
 
 # 4. **Pod Sandbox 与 pause 容器**
 
-**熟悉 Pod 生命周期的同学应该知道，创建 Pod 时 Kubelet 先调用 CRI 接口 **RuntimeService.RunPodSandbox **来创建一个沙箱环境，为 Pod 设置网络（例如：分配 IP）等基础运行环境。当 Pod 沙箱（Pod Sandbox）建立起来后，Kubelet 就可以在里面创建用户容器。当到删除 Pod 时，Kubelet 会先移除 Pod Sandbox 然后再停止里面的所有容器。**
+熟悉 Pod 生命周期的同学应该知道，创建 Pod 时 Kubelet 先调用 CRI 接口 RuntimeService.RunPodSandbox **来创建一个沙箱环境，为 Pod 设置网络（例如：分配 IP）等基础运行环境。当 Pod 沙箱（Pod Sandbox）建立起来后，Kubelet 就可以在里面创建用户容器。当到删除 Pod 时，Kubelet 会先移除 Pod Sandbox 然后再停止里面的所有容器。**
 
 **可能有读者会疑惑，Pod Sandbox 是啥玩意儿啊？其实，这只是同一个事物通过不同角度看得到的不同称谓。从 Kubernetes 的底层容器运行时 CRI 看，Pod 这种在统一隔离环境里资源受限的一组容器，就叫 Sandbox。**
 
 **Tips：一个隔离的应用运行时环境叫容器，一组共同被 Pod 约束的容器就叫 Pod Sandbox。她们同生共死，共享底层资源。**
 
-**了解 KVM 底层的读者应该知道，虚拟机与容器一样底层都使用** cgroups 做资源配额**，而且概念上都抽离出一个**隔离的运行时环境**，只是区别在于资源隔离的实现。因此，从字面是上看，虚拟机和容器还是有机会都用沙箱这个概念来“套“的。事实上，提出 Pod 沙箱概念就是为 Kubernetes 兼容不同运行时环境（甚至包括虚拟机！）预留空间，让运行时根据各自的实现来创建不同的 Pod Sandbox。对于基于 hypervisor 的运行时（KVM，kata 等），Pod Sandbox 就是虚拟机。对于 Linux 容器，Pod Sandbox 就是 Linux Namespace（Network Namespace 等）。**
+**了解 KVM 底层的读者应该知道，虚拟机与容器一样底层都使用** cgroups 做资源配额**，而且概念上都抽离出一个**隔离的运行时环境\*\*，只是区别在于资源隔离的实现。因此，从字面是上看，虚拟机和容器还是有机会都用沙箱这个概念来“套“的。事实上，提出 Pod 沙箱概念就是为 Kubernetes 兼容不同运行时环境（甚至包括虚拟机！）预留空间，让运行时根据各自的实现来创建不同的 Pod Sandbox。对于基于 hypervisor 的运行时（KVM，kata 等），Pod Sandbox 就是虚拟机。对于 Linux 容器，Pod Sandbox 就是 Linux Namespace（Network Namespace 等）。
 
 **Pod Sandbox 与我们今天要聊的“主角”pause 容器有着千丝万缕的联系。在 Linux CRI 体系里，Pod Sandbox 其实就是 pause 容器。Kubelet 代码引用的 defaultSandboxImage 其实就是官方提供的 gcr.io/google_containers/pause-amd64 镜像**
 
