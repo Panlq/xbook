@@ -111,6 +111,90 @@ if inserti == nil {
 
 解决当删除很多 key 导致桶内存排列稀疏，存在太多溢出桶，等量扩容重新排列后数据会更加紧凑，减少溢出桶
 
+## map 不是并发安全的
+
+`sync.Map` 是 Go 语言标准库中提供的一个 并发安全的 map 实现 ，它从 Go 1.9 开始引入，位于 `sync` 包中。它的本质和设计目标与普通的 `map`（配合互斥锁使用）有所不同
+
+sync.Map 的本质是一种适合 `高并发读多写少场景` 线程安全的 map。其内部实现采用了 **双 store 结构** ：一个用于快速读取的只读映射（`readOnly`），和一个用于写入的可变映射（`dirty`）。这种结构让它在某些场景下比 `map + mutex` 更高效
+
+```go
+// readOnly is an immutable struct stored atomically in the Map.read field.
+type readOnly struct {
+	m       map[any]*entry
+	amended bool // true if the dirty map contains some key not in m.
+}
+
+
+type Map struct {
+	mu Mutex
+
+	// 只读映射，不加锁即可访问的，高效读
+	read atomic.Pointer[readOnly]
+
+	// 脏映射，包含将来可能升级到只读映射的数据，需要加锁访问
+	dirty map[any]*entry
+
+	// 记录从只读映射读取失败的次数 用于决定是否将 dirty 升级为 readOnly
+	misses int
+}
+```
+
+### 工作原理简述
+
+1. **读操作（Load）**
+   - 直接访问 `readOnly` 中的 map。
+   - 如果命中则返回结果。
+   - 如果未命中，则会增加 `misses`，并尝试访问 `dirty`（需加锁）。
+2. **写操作（Store/Delete）**
+   - 先尝试加锁，然后操作 `dirty`。
+   - 如果当前 `readOnly` 和 `dirty` 不一致（即 `dirty != nil`），就直接操作 `dirty`。
+   - 如果 `dirty == nil`，则复制 `readOnly` 到 `dirty`，再进行修改。
+3. **升级机制**
+   - 当 `misses >= len(dirty)` 时，自动将 `dirty` 提升为新的 `readOnly`，并将 `dirty` 清空，重新开始累积写入
+
+## 问题案例
+
+### 1. delete nil map no-opp
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	// 1.
+	var timeZone = map[string]int{
+		"UTC": 0 * 60 * 60,
+		"EST": -5 * 60 * 60,
+		"CST": -6 * 60 * 60,
+		"MST": -7 * 60 * 60,
+		"PST": -8 * 60 * 60,
+	}
+
+	// It's safe to do this even if the key is already absent from the map
+	// [1]
+	delete(timeZone, "PDT")
+
+	var m map[string]int
+	// [2] The delete built-in function deletes the element with the specified key (m[key]) from the map. If m is nil or there is no such element, delete is a no-op.
+	delete(m, "no in map!")
+	fmt.Println(m) // --> map[]
+
+	// [3] get value from nil map will return zero value
+	i := m["no in map"]
+	fmt.Println(i)
+
+	// [4] set value to nil map will panic
+	m["no in map"] = 1
+	fmt.Println(m)
+}
+
+```
+
+> 1. [The delete built-in function deletes the element with the specified key (m[key]) from the map. If m is nil or there is no such element, delete is a no-op.](https://pkg.go.dev/builtin#delete)
+> 2. Assigning to an element of a `nil` map causes a [run-time panic](https://go.dev/ref/spec?spm=a2ty_o01.29997173.0.0.7d8a5171IeO7lL#Run_time_panics).
+> 3. get value from nil map will return zero value
+
 # 内存对齐
 
 内存对齐所指的对象是实际存储的数据层
@@ -287,6 +371,22 @@ go 语言函数栈帧，返回值在参数之上，函数栈帧格式如下
 ![1744883728675](image/golang/1744883728675.png)
 
 注意：闭包导致的局部变量堆分配，也是变量逃逸的一种场景
+
+```go
+func TestGofun(t *testing.T) {
+	for i := 0; i < 5; i++ {
+		go func() {
+			fmt.Println(i)
+		}()
+	}
+}
+
+```
+
+以上代码输出结果有几种可能
+
+1. 输出一个 5，或两个
+2. 启动后结束了，没有任何输出，主协程退出了，其他任务也就销毁了
 
 # defer
 
@@ -1599,6 +1699,10 @@ Go 使用 `Monomorphization （单态化： 为每个被调用的数据类型生
 
 [Go 语言基础之并发 - 李文周的博客](https://www.liwenzhou.com/posts/Go/concurrence/)
 
+> **Do not communicate by sharing memory; instead, share memory by communicate.**
+>
+> Go 语言采用的并发模型是 `CSP（Communicating Sequential Processes）`，提倡**通过通信共享内存**而不是 **通过共享内存而实现通信** 。
+
 Go 内建的函数 close、cap、len 都可以操作 chan 类型：close 会把 chan 关闭掉，cap 返回 chan 的容量，len 返回 chan 中缓存的还未被取走的元素数量
 
 ## 原理
@@ -1668,6 +1772,13 @@ close 逻辑比较简单，对于一个 channel，recvq 和 sendq 中分别保�
 close 函数先上一把大锁，接着把所有挂在这个 channel 上的 sender 和 receiver 全都连成一个 sudog 链表，再解锁。最后，再将所有的 sudog 全都唤醒。
 
 唤醒之后，该干嘛干嘛。sender 会继续执行 chansend 函数里 goparkunlock 函数之后的代码，很不幸，检测到 channel 已经关闭了，panic。receiver 则比较幸运，进行一些扫尾工作后，返回。
+
+关闭后的通道有以下特点：
+
+1. 对一个关闭的通道再发送值就会导致 panic。
+2. 对一个关闭的通道进行接收会一直获取值直到通道为空。
+3. 对一个关闭的并且没有值的通道执行接收操作会得到对应类型的零值。
+4. 关闭一个已经关闭的通道会导致 panic。
 
 ## 案例分析
 
@@ -1881,6 +1992,35 @@ func newWorker(id int, ch chan Token, nextCh chan Token) {
 }
 
 ```
+
+### 5. 初始化一个空 chan, 读这个 chan 会怎么样？
+
+```go
+func main() {
+	var ch chan int
+	val, ok := <-ch
+	if ok {
+		fmt.Println("ok", val)
+	} else {
+		fmt.Println("not ok", val)
+	}
+}
+```
+
+> [The value of a receive operation on a nil channel is the zero value of the channel&#39;s element type. The operation blocks forever.](https://go.dev/ref/spec?spm=a2ty_o01.29997173.0.0.7d8a5171IeO7lL#Receive_operator)
+
+1. ⚠️ 如果是主 goroutine 被阻塞，并且没有其他活跃的 goroutine，运行时会报 `deadlock` 错误。
+
+```bash
+fatal error: all goroutines are asleep - deadlock!
+
+goroutine 1 [chan receive (nil chan)]:
+main.main()
+        /Users/jonpan/ownerpro/panlq-github/xbook/golang/test/channel/nil_chan.go:7 +0x24
+exit status 2
+```
+
+2. 如果主进程还有其他协程再跑，则初始化这个 ch ， 并读取的协程函数会永远阻塞
 
 ## 参考与延伸阅读
 
@@ -2153,3 +2293,7 @@ tcmalloc: 对抗内存碎片化的优秀内存分配器
 ![1745401137993](image/golang/1745401137993.png)
 
 arena -> span -> page -> 内存块
+
+# 参考与延伸阅读
+
+1. [[长文]从《100 Go Mistakes》我总结了什么？](https://www.luozhiyun.com/archives/797)
