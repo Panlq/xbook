@@ -65,6 +65,88 @@ sudo go run main.go run --memory=52428800 /mem_stress
 
 如果设置的内存限制为 50MB，则在尝试分配超过该值时会触发 OOM Kill。
 
+> --memory=52428800 # 即 50 _ 1024 _ 1024 = 52,428,800 字节 = 50 MB
+
+```bash
+sudo go run main.go run --cpu-period=100000   --cpu-quota=20000   --memory=52428800   /mem_stress
+[Main Process] Starting
+[Main Process] Running [/mem_stress]
+[Main Process] Starting
+[Child Process] Executing command: [/mem_stress]
+[Child Process] Chrooting into /home/ubuntu/xcgroup/my-busybox-rootfs
+[Child Process] Changing working directory to /
+[Child Process] Mounting proc...
+[Child Process] Mounting tmpfs...
+Memory stress test with physical memory allocation
+Allocated: 10 MB
+Allocated: 20 MB
+Allocated: 30 MB
+Allocated: 40 MB
+Error: signal: killed
+Error: exit status 1
+exit status 1
+```
+
+查看 linux 内核日志可以看到详细的退出原因和进程信息
+
+> sudo journalctl -f
+
+```bash
+May 20 16:38:46 node03 kernel: thp_swpout_fallback 0
+May 20 16:38:46 node03 kernel: Tasks state (memory values in pages):
+May 20 16:38:46 node03 kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name
+May 20 16:38:46 node03 kernel: [  10228]     0 10228   306444      544      160      384         0    73728        0             0 exe
+May 20 16:38:46 node03 kernel: [  10233]     0 10233   306448    12608    12608        0         0   184320        0             0 mem_stress
+May 20 16:38:46 node03 kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=liz,mems_allowed=0,oom_memcg=/liz,task_memcg=/liz,task=mem_stress,pid=10233,uid=0
+May 20 16:38:46 node03 kernel: Memory cgroup out of memory: Killed process 10233 (mem_stress) total-vm:1225792kB, anon-rss:50432kB, file-rss:0kB, shmem-rss:0kB, UID:0 pgtables:180kB oom_score_adj:0
+May 20 16:38:46 node03 sudo[10166]: pam_unix(sudo:session): session closed for user root
+```
+
+#### 🔍 关键日志分析
+
+#### 1. 进程信息（关键）
+
+```bash
+May 20 16:38:46 node03 kernel: [  10233]     0 10233   306448    12608    12608        0         0   184320        0             0 mem_stress
+```
+
+这行是关键，表示进程 `mem_stress` 的内存使用情况：
+
+| 列        | 含义                         | 数值         |
+| --------- | ---------------------------- | ------------ |
+| total_vm  | 虚拟内存大小（页数）         | 306448 pages |
+| rss       | 实际使用的物理内存页数       | 12608 pages  |
+| rss_anon  | 匿名页数量（堆、栈等）       | 12608 pages  |
+| rss_file  | 文件映射页数（如 mmap 文件） | 0            |
+| rss_shmem | 共享内存页数                 | 0            |
+
+> ⚠️ Linux 中每页通常是 **4KB** ，所以我们可以换算一下：
+
+```bash
+rss_anon = 12608 pages × 4 KB = 50,432 KB = 50.4 MB
+```
+
+✅ **这就是超过 50MB 的证据！**
+
+#### 2. OOM 触发原因
+
+```bash
+May 20 16:38:46 node03 kernel: Memory cgroup out of memory: Killed process 10233 (mem_stress) total-vm:1225792kB, anon-rss:50432kB, ...
+```
+
+- `anon-rss:50432kB`：匿名 RSS 内存为 50.432MB，已经**略微超过你的 50MB 限制**
+- `oom_score_adj:0`：默认 OOM 分数（越低越不容易被杀）
+- `task_memcg=/liz`：这个进程属于 `/liz` 这个 cgroup
+- `Memory cgroup out of memory`：说明是因为 cgroup 的内存限制达到了上限
+
+```bash
+May 20 16:38:46 node03 kernel: oom-kill:constraint=CONSTRAINT_MEMCG,...
+```
+
+- `constraint=CONSTRAINT_MEMCG`：表示 OOM 是由 **cgroup 内存限制**触发的。
+- `memcg=/liz`：再次确认是 `/liz` 这个 cgroup 触发的 OOM。
+- `task=mem_stress`：被杀的是 `mem_stress` 进程。
+
 ---
 
 ## 🔍 容器的本质：进程隔离与资源限制
