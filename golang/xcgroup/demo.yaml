@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-pod
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      resources:
+        requests:
+          cpu: "0.5" # 请求 0.5 核
+          memory: "100Mi" # 请求 100MB
+        limits:
+          cpu: "1" # 限制 1 核
+          memory: "200Mi" # 限制 200MB
