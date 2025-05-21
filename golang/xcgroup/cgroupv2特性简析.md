@@ -16,6 +16,8 @@ spec:
           memory: "200Mi" # 限制 200MB
 ```
 
+优先了解[Kubernetes 中 cpu, mem 的资源单位](https://kubernetes.io/zh-cn/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes)
+
 ## **1. CPU 资源映射关系**
 
 ### **(1) `limits.cpu` → `cpu.max`**
@@ -44,7 +46,26 @@ spec:
 - `0.5核 / 1核 = 50%` → 权重值 `50`（相对于默认值 100）
 - **作用** ：当节点 CPU 竞争时，此容器至少获得 50% 的 CPU 时间份额
 
+关于 cpu.weight 的计算并非入商简单的 0.5\*100，而是有一个复杂的计算公式，主要是为了平衡 node 可用 cpu 的时间片分配。在 cpu 资源竞争时，按照 cpu.weight 的比例瓜分 cpu 资源。
+
+cpu.weight 的计算公式：
+
+> (((cpuShares - 2) \* 9999) / 262142) + 1
+
+比如总的 4 核 cpu，pod1 cpu.weight = 79 pod2 cpu.weight = 39
+
+- `pod1`: (79/118) _ 100 _ 4 = ~ 267% (or 2.67 CPU)
+- `pod1`: (39/118) _ 100 _ 4 = ~ 132% (or 1.32 CPU)
+
 ## **2. 内存资源映射关系**
+
+[使用 cgroup v2 的内存 QOS](https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-qos/#memory-qos-with-cgroup-v2), 以下是[新特性](https://kubernetes.io/blog/2021/11/26/qos-memory-resources/)，「**默认未打开**」。
+
+> **特性状态：** `Kubernetes v1.22 [alpha]` (enabled by default: false)
+
+内存 QoS 使用 cgroup v2 的内存控制器来保证 Kubernetes 中的内存资源。 Pod 中容器的内存请求和限制用于设置由内存控制器所提供的特定接口 `memory.min` 和 `memory.high`。 当 `memory.min` 被设置为内存请求时，内存资源被保留并且永远不会被内核回收； 这就是内存 QoS 确保 Kubernetes Pod 的内存可用性的方式。而如果容器中设置了内存限制， 这意味着系统需要限制容器内存的使用；内存 QoS 使用 `memory.high` 来限制接近其内存限制的工作负载， 确保系统不会因瞬时内存分配而不堪重负。
+
+![img](https://kubernetes.io/blog/2021/11/26/qos-memory-resources/memory-qos-cal.svg)
 
 ### **(1) `limits.memory` → `memory.max`**
 
@@ -58,19 +79,38 @@ spec:
 - `200MiB = 200 * 1024 * 1024 = 209715200 字节`
 - **作用** ：容器内存使用超过 200MB 时触发 OOM Kill
 
-### **(2) `requests.memory` → `memory.low`**
+### **(2) `requests.memory`**
+
+requests.memory 并没有映射到 cgroup v2 中的配置项，该值是在 kube-schedule 调度期间使用的，调度器会计算 pod 中包括 getMaxMem(init 容器)+sum(所有其他业务容器) 所需的 mem request 然后过滤是否有合适的 node。在 1.22 特性启新特性的话，会映射到 `memory.min`
 
 - **Kubernetes** ：`requests.memory: "100Mi"`
 - **Cgroup v2** ：
 
 ```bash
-  echo "104857600" > /sys/fs/cgroup/kubepods.slice/memory.low
+  echo "104857600" > /sys/fs/cgroup/kubepods.slice/memory.min
 ```
 
 - `100MiB = 104857600 字节`
 - **作用** ：
   - 当节点内存紧张时，系统会尽量保护这 100MB 内存不被回收
   - 类似于"内存最低保障"，但允许临时超用（不超过 `memory.max`）
+
+### cgroup v2 中的重要 memory 控制文件
+
+你可以在 `/sys/fs/cgroup/<kubepods>/<pod-id>/<container-id>/memory.max` 等路径下查看：
+
+| 文件名             | 含义                                     |
+| ------------------ | ---------------------------------------- |
+| `memory.max`       | 内存使用上限（对应 `limits.memory`）     |
+| `memory.current`   | 当前内存使用量                           |
+| `memory.high`      | 软性限制，超过后会触发内存回收（可选）   |
+| `memory.low`       | 低优先级保留内存（低于该值时不轻易回收） |
+| `memory.min`       | 强制保留内存（最低保障，不轻易回收）     |
+| `memory.swap.max`  | swap 使用上限                            |
+| `memory.oom.group` | OOM 控制行为                             |
+| `memory.pressure`  | 实时内存压力指标（如 `some`,`full`）     |
+
+---
 
 ## **3. 完整 cgroup v2 文件树示例**
 
@@ -194,6 +234,22 @@ spec:
     └── kubepods-burstable.slice/            # 其他 QoS 类别的 Pod
 ```
 
+### 在不同驱动下目录结构不同
+
+Cgroup v2 配合不同的 cgroup 驱动（systemd 驱动 vs. cgroupfs 驱动）会呈现完全不同的目录结构和资源管理方式
+
+**云原生环境** ：优先使用 `systemd + Cgroup v2`（现代 Kubernetes 的默认选择）
+
+| **特性**                | **systemd 驱动**                             | **cgroupfs 驱动**             |
+| ----------------------- | -------------------------------------------- | ----------------------------- |
+| **目录结构**            | 嵌套的 systemd slice/scope 单元              | 平面目录结构                  |
+| **路径示例**            | `/sys/fs/cgroup/kubepods.slice/...`          | `/sys/fs/cgroup/kubepods/...` |
+| **管理方式**            | 通过 systemd 单元文件管理                    | 直接操作 cgroup 文件系统      |
+| **与 rootfs 的关系**    | 需挂载在 `/sys/fs/cgroup`（统一层级）        | 可分散挂载到 rootfs 任意位置  |
+| **Kubernetes 默认选择** | 现代发行版默认（如 Ubuntu 22.04+，k3s 默认） | 旧版 Kubernetes 或自定义集群  |
+
+---
+
 ## 8. CGroup 子系统
 
 想要定义“计算机”各种容量大小，就涉及到支撑容器的第二个技术 **Cgroups （Control Groups）** 了。Cgroups 可以对指定的进程做各种计算机资源的限制，比如限制 CPU 的使用率，内存使用量，IO 设备的流量等等。
@@ -218,6 +274,8 @@ Cgroups 通过不同的子系统限制了不同的资源，每个子系统限制
 - hugetlb：这个子系统主要针对于 HugeTLB 系统进行限制，这是一个大页文件系统
 
 # 参考与延伸阅读
+
+1. **强烈推荐》》》**[CPU and Memory Management on Kubernetes with Cgroupsv2](https://linuxera.org/cpu-memory-management-kubernetes-cgroupsv2)
 
 - [cgroup v2 学习](https://blog.firemiles.top/2022/cgroupv2%E5%AD%A6%E4%B9%A0/)
 - [[译] Control Group v2（cgroupv2 权威指南）（KernelDoc, 2021）](https://arthurchiao.art/blog/cgroupv2-zh/)
