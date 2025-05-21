@@ -6,6 +6,8 @@ k8s 源码阅读以及其他相关内容的存档记录
 
 ![k8s-hl-component-arch](image/README/1744473829790.png)
 
+![1747745241340](image/README/1747745241340.png)
+
 控制面
 
 - kube-apiserver
