@@ -35,6 +35,32 @@ Virtual Kubelet 的作用很简单，就是将各大公有云厂商提供的容�
 | DaemonSet                | 在容器所在宿主机上部署 Static Pod | 通过 sidecar 形式在 Pod 中部署多个镜像 |
 | type=NodePort 的 Service | 将宿主机端口映射到容器上          | 使用 type=LoadBalancer 的负载均衡      |
 
+禁用 hostpath 的方式之一：**PodSecurityPolicy**
+
+```yaml
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: restrict-hostpath
+spec:
+  allowedVolumes:
+    - "configMap" # 允许使用 ConfigMap
+    - "secret" # 允许使用 Secret
+    - "emptyDir" # 允许使用临时卷
+    - "persistentVolumeClaim" # 允许使用 PVC
+  # 禁止使用 hostPath（宿主机目录挂载）
+  hostPath:
+    - type: "" # 清空所有 hostPath 允许规则，即完全禁止
+  seLinux:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+```
+
 # 3. [应用场景](https://help.aliyun.com/zh/eci/product-overview/scenarios?spm=a2c4g.11186623.help-menu-87486.d_0_0_3.6a5a62f8LA73jN&scm=20140722.H_89132._.OR_help-T_cn~zh-V_1)
 
 弹性容器实例适用于容器形态下大部分业务场景，从弹性及成本角度，特别适用于在线业务的免运维托管、大数据计算任务（Spark、Presto）、事件驱动型业务和 Job 型业务，以及 DevOps、机器学习、在线测试等各类场景
