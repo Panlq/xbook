@@ -4363,6 +4363,11 @@ cronjob.batch "pc-cronjob" deleted
 
 有状态服务本质是将物理服务器的工作模式（固定 IP+专属磁盘）映射到 Kubernetes 的虚拟环境
 
+StatefulSet 的设计其实非常容易理解。它把真实世界里的应用状态，抽象为了两种情况：
+
+1. **拓扑状态** 。这种情况意味着，应用的多个实例之间不是完全对等的关系。这些应用实例，必须按照某些顺序启动，比如应用的主节点 A 要先于从节点 B 启动。而如果你把 A 和 B 两个 Pod 删除掉，它们再次被创建出来时也必须严格按照这个顺序才行。并且，新创建出来的 Pod，必须和原来 Pod 的网络标识一样，这样原先的访问者才能使用同样的方法，访问到这个新 Pod。
+2. **存储状态** 。这种情况意味着，应用的多个实例分别绑定了不同的存储数据。对于这些应用实例来说，Pod A 第一次读取到的数据，和隔了十分钟之后再次读取到的数据，应该是同一份，哪怕在此期间 Pod A 被重新创建过。这种情况最典型的例子，就是一个数据库应用的多个存储实例。
+
 ### 6.8.1 核心功能
 
 | 功能         | 实现机制                                                           |
@@ -4385,7 +4390,7 @@ cronjob.batch "pc-cronjob" deleted
 
 ### 6.8.2 案例
 
-以 mysql 为例
+以 mysql 为例：[官网案例》》](https://kubernetes.io/docs/tasks/run-application/run-replicated-stateful-application/#statefulset)
 
 ```yaml
 apiVersion: apps/v1
@@ -5636,7 +5641,109 @@ pv2    2Gi        RWX            Retain        Available    10s   Filesystem
 pv3    3Gi        RWX            Retain        Available    9s    Filesystem
 ```
 
-### 8.2.2 PVC
+### 8.2.2 StorageClass
+
+在 Kubernetes 中，Pod 可以通过 `PersistentVolumeClaim` (PVC) 来请求存储空间。传统方式下，集群管理员需要提前创建好多个 `PersistentVolume` (PV)，然后 PVC 去绑定这些 PV。这种方式称为 **静态供给（Static Provisioning）** 。
+
+而 **StorageClass 的出现实现了动态供给（Dynamic Provisioning）** ，即当用户提交 PVC 请求时，Kubernetes 根据 PVC 指定的 StorageClass 自动调用相应的存储插件来创建 PV，不需要人工干预。
+
+一个典型的 `StorageClass` 对象包含以下字段：
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast
+provisioner: kubernetes.io/aws-ebs # 存储提供者插件
+parameters:
+  type: gp2 # 存储类型参数
+reclaimPolicy: Delete # 回收策略：Delete 或 Retain
+mountOptions:
+  - debug # 挂载选项
+allowVolumeExpansion: true # 是否允许扩容
+volumeBindingMode: Immediate # 卷绑定模式
+```
+
+各字段详解：
+
+| 字段                   | 说明                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `name`                 | StorageClass 的名称，PVC 会引用这个名称                                                                               |
+| `provisioner`          | 负责动态创建 PV 的插件标识符，例如 AWS EBS、Ceph、NFS 等                                                              |
+| `parameters`           | 提供给 provisioner 的参数，如磁盘类型、性能等级等                                                                     |
+| `reclaimPolicy`        | 当 PVC 被删除后如何处理对应的 PV：`<br>` -`Delete`: 删除 PV 和底层存储`<br>` -`Retain`: 保留 PV 和数据                |
+| `mountOptions`         | 挂载到节点时使用的文件系统挂载选项                                                                                    |
+| `allowVolumeExpansion` | 是否允许 PVC 扩容，默认为 false                                                                                       |
+| `volumeBindingMode`    | 控制 PVC 与 PV 绑定的方式：`<br>` -`Immediate`: 立即绑定`<br>` -`WaitForFirstConsumer`: 延迟绑定，直到 Pod 使用该 PVC |
+
+---
+
+#### Provisioner（供应器）
+
+`provisioner` 是 StorageClass 最核心的部分，决定了由哪个插件来创建存储卷。常见的 provisioner 包括：
+
+- `kubernetes.io/aws-ebs`：AWS EBS
+- `kubernetes.io/azure-disk`：Azure Disk
+- `kubernetes.io/gce-pd`：GCP Persistent Disk
+- `k8s-sigs.io/nfs-subdir-external-provisioner`：NFS 动态供给
+- `rancher.io/local-path`：本地路径存储（适用于单节点测试环境）
+- `ceph.rook.io/block`：Rook + Ceph 块设备
+- `csi.vsphere.volume`：VMware vSphere CSI 驱动
+- `hostpath.csi.k8s.io`：CSI HostPath 驱动（用于测试）
+
+#### PVC 如何使用 StorageClass
+
+通过 PVC 来指定使用哪个 StorageClass：
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast # 指定 StorageClass 名称
+```
+
+如果没有显式指定 `storageClassName`，则会使用默认的 StorageClass（如果有设置的话）。
+
+可以通过以下命令查看默认 StorageClass：
+
+```bash
+kubectl get storageclasses.storage.k8s.io
+# 查看哪个被标记为 default
+```
+
+也可以设置某个 StorageClass 为默认：
+
+```bash
+kubectl patch storageclass fast -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+#### StorageClass 实例
+
+NFS 示例（使用外部 provisioner）
+
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-storage
+provisioner: example.com/nfs
+parameters:
+  archiveOnDelete: "false"
+```
+
+- [Kubernetes 官方文档 - StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+- [Kubernetes NFS External Provisioner](https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner)
+- [Rook + Ceph 示例](https://rook.io/docs/rook/latest/)
+- [Helm Charts for Provisioners](https://artifacthub.io/)
+
+### 8.2.3 PVC
 
 PVC 是资源的申请，用来声明对存储空间、访问模式、存储类别需求信息。下面是资源清单文件:
 
@@ -5824,7 +5931,7 @@ node2
 node2
 ```
 
-### 8.2.3 生命周期
+### 8.2.4 生命周期
 
 PVC 和 PV 是一一对应的，PV 和 PVC 之间的相互作用遵循以下生命周期：
 
