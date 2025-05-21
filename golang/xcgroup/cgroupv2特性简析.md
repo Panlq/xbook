@@ -193,3 +193,32 @@ spec:
     │       └── ...                          # 容器级配置继承 Pod
     └── kubepods-burstable.slice/            # 其他 QoS 类别的 Pod
 ```
+
+## 8. CGroup 子系统
+
+想要定义“计算机”各种容量大小，就涉及到支撑容器的第二个技术 **Cgroups （Control Groups）** 了。Cgroups 可以对指定的进程做各种计算机资源的限制，比如限制 CPU 的使用率，内存使用量，IO 设备的流量等等。
+
+Cgroups 究竟有什么好处呢？要知道，在 Cgroups 出现之前，任意一个进程都可以创建出成百上千个线程，可以轻易地消耗完一台计算机的所有 CPU 资源和内存资源。
+
+但是有了 Cgroups 这个技术以后，我们就可以对一个进程或者一组进程的计算机资源的消耗进行限制了。
+
+Cgroups 通过不同的子系统限制了不同的资源，每个子系统限制一种资源。每个子系统限制资源的方式都是类似的，就是把相关的一组进程分配到一个控制组里，然后通过**树结构**进行管理，每个控制组都设有自己的资源控制参数
+
+完整的 Cgroups 子系统的介绍，你可以查看[Linux Programmer’s Manual](https://man7.org/linux/man-pages/man7/cgroups.7.html) 中 Cgroups 的定义。
+
+- CPU 子系统，用来限制一个控制组(一组进程，可以理解为一个容器里所有的进程)可使用的最大 CPU
+- memory 子系统，用来限制一个控制组最大的内存使用量
+- blkio 子系统，限制磁盘的 I/O，这个子系统为块设备设定输入/输出限制，比如物理设备（磁盘，固态硬盘，USB 等等
+- pids 子系统，用来控制一个控制组里最多可以运行多个少进程
+- cpuset 子系统，用来限制一个控制组里的进程可以在哪里几个物理 cpu 上运行
+- freezer: 负责挂起或恢复 cgroup 中的任务
+- devices：可允许或拒绝 cgroup 中的任务访问设备
+- net_cls：使用等级识别符(classid)标记网络数据包，可允许 Linux 流量控制程序(tc)识别从具体 cgroup 生成的数据包
+- net_prio：设计网络流量的优先级
+- hugetlb：这个子系统主要针对于 HugeTLB 系统进行限制，这是一个大页文件系统
+
+# 参考与延伸阅读
+
+- [cgroup v2 学习](https://blog.firemiles.top/2022/cgroupv2%E5%AD%A6%E4%B9%A0/)
+- [[译] Control Group v2（cgroupv2 权威指南）（KernelDoc, 2021）](https://arthurchiao.art/blog/cgroupv2-zh/)
+- [Linux Cgroup V2 初体验](https://www.lixueduan.com/posts/linux/08-cgroup-v2/)
