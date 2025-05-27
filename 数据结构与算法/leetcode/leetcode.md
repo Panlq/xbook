@@ -193,6 +193,62 @@ class Solution:
 # [42. 接雨水](https://leetcode.cn/problems/trapping-rain-water/)
 
 ```python
+# 接雨水，前后缀去最小高度-柱子高度获取雨水容量，竖向计算
+class Solution:
+    def trap(self, height):
+
+        height_len = len(height)
+        pre_max = [height[0]] * height_len
+        suf_max = [height[-1]] * height_len
+        # 1. 计算前缀最大高度，柱子左边最大高度
+        for i in range(1, height_len):
+            pre_max[i] = max(height[i], pre_max[i - 1])
+
+        # 2. 计算后缀最大高度，柱子右边最大高度
+        for i in range(height_len - 2, -1, -1):
+            suf_max[i] = max(height[i], suf_max[i + 1])
+
+        # 3. 计算能接水的容量
+        ans = 0
+        for i in range(height_len):
+            ans += min(suf_max[i], pre_max[i]) - height[i]
+
+        return ans
+
+    def trap2(self, height):
+        # 单调栈，横着计算可接水的容量
+        ans = 0
+        st = []
+        # 要接水我们要直到三根柱子的位置，左边，中间，右边，且要满足左底右高的情况(假设从左往右看)
+        # 遍历数组
+        for i, h in enumerate(height):
+            # 当找到下一个更大的元素后，就逐个出栈注意是 h >= height[st[-1]]
+            while st and h >= height[st[-1]]:
+                # 推出最后一个元素，作为底部元素
+                bottom_h = height[st.pop()]
+                if len(st) == 0:
+                    break
+                # 左边高度
+                left = st[-1]
+
+                # 计算容器高度 等于左右两根柱子最小高度，减去中间柱子高度
+                dh = min(height[left], h) - bottom_h
+                # 计算宽度
+                width = i - left - 1
+                ans += dh * width
+
+            st.append(i)
+
+        return ans
+
+
+if __name__ == "__main__":
+    a = Solution().trap([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])
+    b = Solution().trap2([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1])
+    print(a, b, a == b)
+```
+
+```python
 class Solution:
     def trap(self, height: List[int]) -> int:
         # 时间复杂度 O(n)
@@ -224,6 +280,104 @@ class Solution:
 所以用相向双指针来计算，那边小统计那边的
 
 ![1746977373072](image/node/1746977373072.png)
+
+# [347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/)
+
+```python
+class Solution:
+    def topKFrequent(self, nums: List[int], k: int) -> List[int]:
+        # 第一步：统计每个元素出现的次数,同时记录最大值
+        max_val = 0
+        cnt_map = defaultdict(int)
+        for n in nums:
+            cnt_map[n]+=1
+
+        max_val = max(cnt_map.values())
+
+        # 第二步：把出现次数相同的元素，放在一个桶种，桶的长度为max_val
+        # ⚠️这里是二维的，出现次数可能相同[[0], [1], []]
+        buckets = [[] for _ in range(max_val+1)]
+        for x, c in cnt_map.items():
+            buckets[c].append(x)
+
+        # 第三步：倒序遍历 buckets，把出现次数前 k 个的元素加入答案结果
+        ans = []
+
+        for i in range(len(buckets)-1, -1, -1):
+            if buckets[i]:
+                # 这里也可以不用判断是否为空，直接extend进去也是空的
+                ans.extend(buckets[i])
+            # 题目保证答案唯一
+            if len(ans) == k:
+                return ans
+
+```
+
+# [215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/)
+
+你必须设计并实现时间复杂度为 `O(n)` 的算法解决此问题。
+
+**提示：**
+
+- `1 <= k <= nums.length <= 10^5`
+- `-10^4 <= nums[i] <= 10^4`
+
+根据要求和提示，nums[i]的取值范围是有限的，切要求用 O(n)，所以可以用桶排序的思路
+
+```python
+class Solution:
+    def findKthLargest(self, nums: List[int], k: int) -> int:
+        # 桶排序，桶最长为 20001
+        bucket = [0] * 20001
+
+        # 映射 nums[i] + 10000 将原始元素映射到桶的索引里，由于nums[i]有小数，所以+10000
+        for n in nums:
+            index = n + 10000
+            # 有相同元素
+            bucket[index] = bucket[index] + 1
+
+        # 逆映射找k
+        for i in range(20000, -1, -1):
+            # 由于桶种存了相同的元素，所以减去相同元素个数
+            k = k - bucket[i]
+            # k <= 0 说明找到了，具体位置不重要，直接返回结果
+            if k <= 0:
+                return i - 10000
+
+        return 0
+```
+
+如果用快排或者最小堆，就是 O(nlogk) 近似 O(n)
+
+# [2918. 数组的最小相等和](https://leetcode.cn/problems/minimum-equal-sum-of-two-arrays-after-replacing-zeros/)
+
+下界分析：
+
+    先把数组中的 0 替换成最小的正整数 1，然后再看下一步要怎么走。
+    替换后，设 nums1 的元素和为 s1，nums2 的元素和为 s2。这是元素和的最小值，只能增大，不能减小。
+    所以下一步是，把较小的元素和增大到等于较大的元素和。
+
+分类讨论：
+
+    如果 s1<s2 且 nums1 中没有 0，那么 s1 无法增大，无法让 s1=s2，返回 −1。
+    如果 s2<s1 且 nums2 中没有 0，那么 s2 无法增大，无法让 s2=s1，返回 −1。
+    否则，可以把较小的元素和变成较大的元素和，答案为 max(s1,s2)。
+
+[灵茶山艾府](https://leetcode.cn/problems/minimum-equal-sum-of-two-arrays-after-replacing-zeros/solutions/2503178/fen-lei-tao-lun-by-endlesscheng-y57m/)
+
+```python
+class Solution:
+    def minSum(self, nums1: List[int], nums2: List[int]) -> int:
+        # 先都加上最小整数1，计算最小的和，
+        sum1 = sum(max(x, 1) for x in nums1)
+        sum2 = sum(max(x, 1) for x in nums2)
+
+        # 判断数组内是否有0，有0才有可能替换成其他整数
+        if (sum1 < sum2 and 0 not in nums1) or (sum2 < sum1 and 0 not in nums2):
+            return -1
+
+        return max(sum1, sum2)
+```
 
 # [209. 长度最小的子数组](https://leetcode.cn/problems/minimum-size-subarray-sum/)
 
@@ -772,9 +926,11 @@ class Solution:
 
 为什么是 k(b+c)？
 
-因为快慢指针相遇，快指针可能已经走了好几圈，假设最坏的情况，当慢指针进入环的时候，快指针刚好在慢指针前面，假设最快相遇只要一步，slow+1 = fast 绕一圈-1，所以对于其他情况，快指针移动的举例都会小于 环长-1。所以快慢指针相遇时，慢指针移动的举例小于环长
+因为快慢指针相遇，快指针可能已经走了好几圈，假设最坏的情况，当慢指针进入环的时候，快指针刚好在慢指针前面，假设最快相遇只要一步，slow+1 = fast 绕一圈-1，所以对于其他情况，快指针移动的举例都会小于 环长-1。所以快慢指针相遇时，慢指针移动的举例小于环长。
 
 ![1747052650663](image/node/1747052650663.png)
+
+假设 k=1，就是 1 圈，那么 a=c。所以，慢指针和头节点继续走，会在入口处相遇
 
 ```python
 # Definition for singly-linked list.
@@ -1131,6 +1287,8 @@ class Solution:
 
 ![img](https://assets.leetcode.com/uploads/2020/11/26/tmp-tree.jpg)
 
+![1747552481421](image/leetcode/1747552481421.png)
+
 ```python
 # Definition for a binary tree node.
 class TreeNode:
@@ -1149,6 +1307,66 @@ class Solution:
         l_depth = self.maxDepth(root.left)
         r_depth = self.maxDepth(root.right)
         return max(l_depth, r_depth) + 1
+```
+
+## [543. 二叉树的直径](https://leetcode.cn/problems/diameter-of-binary-tree/)
+
+![1747554781108](image/leetcode/1747554781108.png)
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def diameterOfBinaryTree(self, root: Optional[TreeNode]) -> int:
+
+        ans = 0
+        def maxDepth(root):
+            if root is None:
+                return 0
+            # 左子树的最大深度
+            l_depth = maxDepth(root.left)
+            # 右子树的最大深度
+            r_depth = maxDepth(root.right)
+            nonlocal ans
+            # 左子树+右子树的最大深度就是直径，这递归种记录最大值
+            ans = max(l_depth+r_depth, ans)
+            return max(l_depth, r_depth)+1
+
+        maxDepth(root)
+        return ans
+```
+
+## [124. 二叉树中的最大路径和](https://leetcode.cn/problems/binary-tree-maximum-path-sum/)
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        # Definition for a binary tree node.
+        ans = 0
+        def dfs(root):
+            if root is None:
+                return 0
+            # 左子树最大路径和
+            l_val = dfs(root.left)
+            # 右子树的最大路径和
+            r_val = dfs(root.right)
+            nonlocal ans
+            # 左子树+右子树的最大路径和+当前节点值，在递归种记录最大值
+            ans = max(ans, l_val+r_val+root.val)
+            return max(l_val, r_val) + root.val
+
+        dfs(root)
+        return ans
 ```
 
 ## [100. 相同的树](https://leetcode.cn/problems/same-tree/)
@@ -1519,6 +1737,192 @@ class Solution:
         return ans
 ```
 
+# 构造二叉树
+
+构造树一般采用的是**_前序遍历_**，因为先构造中间节点，然后递归构造左子树和右子树。
+
+## [654. 最大二叉树](https://leetcode.cn/problems/maximum-binary-tree/)
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def constructMaximumBinaryTree(self, nums: List[int]) -> Optional[TreeNode]:
+        # 构造树一般采用的是***前序遍历***，因为先构造中间节点，然后递归构造左子树和右子树。
+        nums_len = len(nums)
+        node = TreeNode()
+        # 递归退出条件
+        if nums_len == 1:
+            node.val = nums[0]
+            return node
+
+        # 1. 找到数组中最大的值和对应的下标
+        max_val = 0
+        max_val_index = 0
+        for i, n in enumerate(nums):
+            if n > max_val:
+                max_val = n
+                max_val_index = i
+
+        # 2. 找到最大值后，作为根节点，然后分割左右区间
+        node.val = max_val
+
+        # 3. 最大值所在下标的左区间，构造左子树
+        if max_val_index > 0:
+            node.left = self.constructMaximumBinaryTree(nums[:max_val_index])
+
+        # 4. 最大值所在下标的右区间，构造右子树
+        if max_val_index < nums_len - 1:
+            node.right = self.constructMaximumBinaryTree(nums[max_val_index+1:])
+
+        return node
+```
+
+## [108. 将有序数组转换为二叉搜索树](https://leetcode.cn/problems/convert-sorted-array-to-binary-search-tree/)
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def sortedArrayToBST(self, nums: List[int]) -> Optional[TreeNode]:
+        # BST 的特性是左子树节点值 < 根节点值 < 右子树节点值
+        # 由于BST的最坏情况就是单边树，题目要求平衡二叉搜索树
+        # 1. 选择中间元素作为根节点，确保左右子树元素数量平衡。
+        # 2. 递归处理左右子数组，分别构建左右子树。
+        def build(l, r):
+            if l > r:
+                return None
+
+            mid = (l + r) // 2
+            # 构造根节点
+            root = TreeNode(nums[mid])
+            # 构造左区间
+            root.left = build(l, mid-1)
+            # 构造右区间
+            root.right = build(mid+1, r)
+
+            return root
+
+        return build(0, len(nums)-1)
+```
+
+## 中序和后序反推二叉树
+
+[106. 从中序与后序遍历序列构造二叉树](https://leetcode.cn/problems/construct-binary-tree-from-inorder-and-postorder-traversal/)
+
+1. 后序数组大小为 0，空节点
+2. 后序数组最后一个元素为根节点元素
+3. 如果后序数组长度为 1， 表示置于一个节点，直接返回根据点
+4. 在中序数组中找根节点的位置作为切割点
+5. 切割中序数组，得到 inorder 数组的左右半边，规则：以后序找到的根节点作为切割点
+6. 切割后序数组，得到 postorder 数组的左右半边，规则：中序数组大小一定是和后序数组的大小相同的
+7. 递归处理左区间，右区间
+
+案例
+
+中序：9, 3，15， 20， 7
+
+后序：9，15， 7， 20， 3
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def buildTree(self, inorder: List[int], postorder: List[int]) -> Optional[TreeNode]:
+        # 1. 如果后序数组大小为0， 返回空
+        postorder_len = len(postorder)
+        inorder_len = len(inorder)
+        if postorder_len == 0 or inorder_len == 0:
+            return None
+
+        # 2. 定义根节点
+        root = TreeNode(postorder[-1])
+
+        # 3. 如果后序数组长度为 1， 表示置于一个节点，直接返回根据点
+        if postorder_len == 1:
+            return root
+
+        # 4. 寻找根节点在中序数组中的位置作为切割点
+        root_inorder_index = inorder.index(root.val)
+
+        # 5. 切割中序数组
+        left_inorder = inorder[:root_inorder_index]
+        right_inorder = inorder[root_inorder_index+1:]
+
+        # 6. 切后序数组，切割规则：中序数组大小一定是和后序数组的大小相同的
+        left_postorder = postorder[:len(left_inorder)]
+        right_postorder = postorder[len(left_inorder):-1]
+
+        # 7. 递归生成左子树
+        root.left = self.buildTree(left_inorder, left_postorder)
+        # 8. 递归生成右子树
+        root.right = self.buildTree(right_inorder, right_postorder)
+
+        return root
+```
+
+## 先序和中序反推二叉树
+
+[105. 从前序与中序遍历序列构造二叉树](https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/)
+
+1. 如果先序数组种大小为 0，空节点
+2. 先序数组第一个元素为根节点
+3. 如果先序数组长度为 1，表示只有一个节点，直接返回根节点
+4. 在中序数组中找根节点的位置作为切割点
+5. 切割中序数组，规则：以先序找到的根节点作为切割点
+6. 切割后序数组，规则：中序数组大小一定根先序数组大小相同
+7. 递归处理左右区间
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def buildTree(self, preorder: List[int], inorder: List[int]) -> Optional[TreeNode]:
+        preorder_len = len(preorder)
+        inorder_len = len(inorder)
+        # 1. 如果先序数组种大小为 0，空节点
+        if preorder_len == 0 or inorder_len == 0:
+            return None
+
+        # 2. 先序数组第一个元素为根节点
+        root = TreeNode(preorder[0])
+        # 3. 如果先序数组长度为 1，表示只有一个节点，直接返回根节点
+        if preorder_len == 1:
+            return root
+
+        # 4. 在中序数组中找根节点的位置作为切割点
+        root_inorder_index = inorder.index(root.val)
+        # 5. 切割中序数组，规则：以先序找到的根节点作为切割点
+        left_inorder = inorder[:root_inorder_index]
+        right_inorder = inorder[root_inorder_index+1:]
+
+        # 6. 切割先序数组，规则：中序数组大小一定根先序数组大小相同
+        # ⚠️ 第一个节点已经被去出去当根节点
+        left_preorder = preorder[1:len(left_inorder)+1]
+        right_preorder = preorder[len(left_inorder)+1:]
+        # 7. 递归处理左右区间
+        root.left = self.buildTree(left_preorder, left_inorder)
+        root.right = self.buildTree(right_preorder, right_inorder)
+
+        return root
+```
+
 # 回溯
 
 本质是暴力 for 循环，但是是一种可定义嵌套层次的暴力搜索法。
@@ -1529,7 +1933,7 @@ class Solution:
 
 回溯三部曲：一定要画属性结构分析结果集
 
-1. 递归函数参数第一
+1. 递归函数参数定义
 2. 递归函数的退出条件
 3. 单层 for 循环的处理逻辑
 
@@ -2095,6 +2499,93 @@ class Solution:
         return sum(nums)
 ```
 
+## [1481. 不同整数的最少数目](https://leetcode.cn/problems/least-number-of-unique-integers-after-k-removals/)
+
+<pre><strong>输入：</strong>arr = [4,3,1,1,3,3,2], k = 3
+<strong>输出：</strong>2
+<strong>解释：</strong>先移除 4、2 ，然后再移除两个 1 中的任意 1 个或者三个 3 中的任意 1 个，最后剩下 1 和 3 两种整数。</pre>
+
+```python
+class Solution:
+    def findLeastNumOfUniqueInts(self, arr: List[int], k: int) -> int:
+        # 统计数字出现的次数，移除最少出现的，剩下重复最多的，最后剩下的就符合题意了
+        count = defaultdict(int)
+        for n in arr:
+            count[n]+=1
+
+        # 出现次数从小到大排序，移除数据
+        sorted_items = sorted(count.items(), key = lambda x:x[1])
+        ans = len(sorted_items)
+        for num, cnt in sorted_items:
+            if k >= cnt:
+                k -= cnt
+                ans-=1
+
+        return ans
+```
+
+## [1403. 非递增顺序的最小子序列](https://leetcode.cn/problems/minimum-subsequence-in-non-increasing-order/)
+
+```python
+class Solution:
+    def minSubsequence(self, nums: List[int]) -> List[int]:
+        """
+        我们可以先对 nums 进行排序（升序），然后从后往前开始选择，当首次满足「选择元素之和 严格大于 未选择元素之和」时，必然满足所选元素个数最少，若存在其他同样个数的合法方案，也满足所选方案为元素和最大方案，同时满足答案输出按照非升序要求。
+        """
+
+        nums.sort(reverse=True)
+        total, s = sum(nums), 0
+        for i, n in enumerate(nums):
+            s += n
+            # 题目保证答案存在，所以找到直接返回
+            if s > total -s:
+                # 先加后判断，所以要包含当前元素
+                return nums[:i+1]
+```
+
+## [2587. 重排数组以得到最大前缀分数](https://leetcode.cn/problems/rearrange-array-to-maximize-prefix-score/)
+
+题意翻译过来就是要找，数组元素累加后得到正数最多的个数，要得到正数最多的个数，那必然要先让正数相加，最后在逐个减去负数
+
+```python
+class Solution:
+    def maxScore(self, nums: List[int]) -> int:
+        # 贪心的逻辑：降序排序，便于快速累加正数
+        nums.sort(reverse=True)
+        prefix_sum = 0
+        ans = 0
+
+        for num in nums:
+            prefix_sum += num
+            if prefix_sum > 0:
+                ans += 1
+            else:
+                # 提前终止循环，出现负数后就不符合题意了
+                break
+
+        return ans
+```
+
+## [605. 种花问题](https://leetcode.cn/problems/can-place-flowers/)
+
+```python
+class Solution:
+    def canPlaceFlowers(self, flowerbed: List[int], n: int) -> bool:
+
+        f_len = len(flowerbed)
+        i = 0
+        while i < f_len:
+            # [0, 0], [0,0,0], [1,0,0,0,1]
+            # 能种花的场景肯定是 数组中有三个连续的0，或者只有两个元素时，且两个都是0
+            if (i == 0 or flowerbed[i-1] == 0) and flowerbed[i] == 0 and (i == f_len -1 or flowerbed[i+1] == 0):
+                n -= 1
+                i+=2
+            else:
+                i+=1
+
+        return n <=
+```
+
 ## [134. 加油站](https://leetcode.cn/problems/gas-station/)
 
 贪心思路：能走一圈说明，整体油量大于等于整体消耗，说明肯定存在这么个位置，那这个位置在哪里。
@@ -2250,11 +2741,203 @@ class Solution:
         return ans
 ```
 
+## [53. 最大子数组和](https://leetcode.cn/problems/maximum-subarray/)
+
+```python
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        # 贪心思路
+        # 定义ans 为负无穷大，便于比较
+        ans = -inf
+        count = 0
+        for n in nums:
+            count += n
+            # 取区间累计的最大值，(相当于不断去订最大子序的终止位置)
+            if count > ans:
+                ans = count
+
+            # 重置最大子序计算的起始位置，因为遇到负数一定会拉低总和
+            if count<=0:
+                count = 0
+
+        return ans
+```
+
+## [738. 单调递增的数字](https://leetcode.cn/problems/monotone-increasing-digits/)
+
+```python
+class Solution:
+    def monotoneIncreasingDigits(self, n: int) -> int:
+        # 将数字转为字符串，方便比较
+        s = list(str(n))
+        flag = nums_len = len(s)
+        # 倒序判断前一个大于后一个，这样才能利用到前面计算的结果
+        for i in range(nums_len-2, -1, -1):
+            if s[i] > s[i+1]:
+                # 将当前值-1
+                s[i] = str(int(s[i])-1)
+                # 记录小于的位置，遍历结束后要全部改成9
+                # 为什不在这里直接改？，考虑1000这种数据，如果在这里就改，可能就是900
+                # 但结果是999
+                flag = i+1
+
+        # 如果没找到数值变换的位置，说明本身就是单调递增的，直接return
+        if flag == nums_len:
+            return n
+
+        # 将flag位置到最后的都改成9
+        s[flag:] = ['9'] * (nums_len - flag)
+
+        # 如果第一位已经减成0，不可能出现第二位也是0，如果在高位数值转换，第二位到最后都是9
+        if s[0] == '0':
+            s = s[1:]
+
+        # 返回结果
+        return int(''.join(s))
+```
+
+# 栈
+
+## [394. 字符串解码](https://leetcode.cn/problems/decode-string/)
+
+<pre><strong>输入：</strong>s = "3[a2[c]]"
+<strong>输出：</strong>"accaccacc"</pre>
+
+```python-repl
+class Solution:
+    def decodeString(self, s: str) -> str:
+        # 记录当前遍历的字符串
+        ans = ''
+        # 注意到3[a2[c]] 这个字符串要先扩展内部在到外部，符合栈后进先出的规则
+        stack = []
+        # 倍数
+        multi = 0
+        for c in s:
+            if c == '[':
+                # 入栈
+                stack.append([multi, ans])
+                # 重置
+                ans, multi = '', 0
+            elif c == ']':
+                # 出栈
+                cur_multi, last_ans = stack.pop()
+                # 将上次的结果与当前的拼接
+                ans = last_ans + cur_multi*ans
+            elif '0' <= c <= '9':
+                # 考虑连续数字字符的情况
+                multi = multi * 10 + int(c)
+            else:
+                ans += c
+
+        return ans
+```
+
+## [155. 最小栈](https://leetcode.cn/problems/min-stack/)
+
+```python-repl
+class MinStack:
+
+    def __init__(self):
+        self.main_stack = []
+        # 辅助栈,记录最小值
+        self.min_stack = []
+
+
+    def push(self, val: int) -> None:
+        self.main_stack.append(val)
+        if not self.min_stack or val <= self.min_stack[-1]:
+            self.min_stack.append(val)
+
+
+    def pop(self) -> None:
+        if self.main_stack.pop() == self.min_stack[-1]:
+            self.min_stack.pop()
+
+    def top(self) -> int:
+        return self.main_stack[-1] if self.main_stack else None
+
+    def getMin(self) -> int:
+        return self.min_stack[-1] if self.min_stack else None
+
+
+
+# Your MinStack object will be instantiated and called as such:
+# obj = MinStack()
+# obj.push(val)
+# obj.pop()
+# param_3 = obj.top()
+# param_4 = obj.getMin()
+```
+
+## [20. 有效的括号](https://leetcode.cn/problems/valid-parentheses/)
+
+解法 1：直接利用单调栈
+
+```python
+class Solution:
+    def isValid(self, s: str) -> bool:
+        stack = []
+        # 长度必须是偶数才能完全匹配
+        if len(s) % 2:
+            return False
+
+        # 利用对称的思想，([{}])
+        """
+        (   -> )
+        [   -> ]
+        {   -> }
+        到这里三个入栈[),],}]
+        当遇到非([{，就开始出栈比较是否相等
+        """
+        for c in s:
+            if c == '(':
+                stack.append(')')
+            elif c == '{':
+                stack.append('}')
+            elif c == '[':
+                stack.append(']')
+            elif not stack or stack.pop() != c:
+                # 考虑没有入栈的情况 字符非对称如 ]], 折冲情况栈就是空的
+                return False
+
+        # 题目要求，s长度>1, 所以如果完全匹配，说明栈就是空的
+        return not stack
+```
+
+解法 2
+
+```python-repl
+class Solution:
+    def isValid(self, s: str) -> bool:
+
+        # 长度必须是偶数才能完全匹配
+        if len(s) % 2:
+            return False
+
+        stack = []
+        mp = {'(': ')', '{': '}', '[': ']'}
+        for c in s:
+            if c in mp:
+                stack.append(mp[c])
+            elif not stack or stack.pop() != c:
+                # 考虑一开始就是右括号的情况 ]](), 以及不匹配
+                return False
+
+        # 所有左右括号都匹配完毕
+        return not stack
+```
+
 # 单调栈
 
-## [739. 每日温度](https://leetcode.cn/problems/daily-temperatures/)
+核心思想是维护一个 **单调递增或递减的栈** ，从而在线性时间内高效解决 “ **元素与相邻元素的大小关系** ” 问题。
 
-```
+单调递增时，找下一个最大
+
+单调递减时，找下一个最小
+
+## [739. 每日温度](https://leetcode.cn/problems/daily-temperatures/)-最原始的单递增栈
+
+```python
 class Solution:
     def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
         n = len(temperatures)
@@ -2271,6 +2954,119 @@ class Solution:
             stack.append(i)
 
         return ans
+```
+
+## [496. 下一个更大元素 I](https://leetcode.cn/problems/next-greater-element-i/)
+
+```python
+
+class Solution:
+    def nextGreaterElement(self, nums1: List[int], nums2: List[int]) -> List[int]:
+        nums1_len = len(nums1)
+        res = [-1] * nums1_len
+        st = []
+        nums1_index_map = {}
+        for i, n in enumerate(nums1):
+            nums1_index_map[n] = i
+
+        # 要找哪一个数据那个作为单调栈
+        for n in nums2:
+            # 假设nums2 为 [73,75,71,69,69,72] 当遍历到最后一个元素时，前面几个
+            # 75,71,69,69已经入栈行程，单调栈，所以当遇到一个比栈顶还大的，就要while找出所有比它小的出栈
+            while st and n > st[-1]:
+                l = st.pop()
+                if l in nums1_index_map:
+                    res[nums1_index_map[l]] = n
+
+            st.append(n)
+
+        return res
+```
+
+## [503. 下一个更大元素 II](https://leetcode.cn/problems/next-greater-element-ii/)
+
+```python
+class Solution:
+    def nextGreaterElements(self, nums: List[int]) -> List[int]:
+        nums_len = len(nums)
+        res = [-1] * nums_len
+        st = []
+
+        # 数组成环，可以将数组扩大两倍，直接变量两倍的数组，然后结果只去数组长度
+        # 由于两倍扩大，空间复杂度和时间复杂度都增加了，所以可以改成，求余索引，就不会超过index range
+        for i in range(nums_len*2):
+            # 假设nums2 为 [73,75,71,69,69,72] 当遍历到最后一个元素时，前面几个
+            # 75,71,69,69已经入栈行程，单调栈，所以当遇到一个比栈顶还大的，就要while找出所有比它小的出栈
+            index = i % nums_len
+            while st and nums[index] > nums[st[-1]]:
+                pre_index = st.pop()
+                res[pre_index] = nums[index]
+
+            st.append(index)
+
+        return res
+```
+
+## [654. 最大二叉树](https://leetcode.cn/problems/maximum-binary-tree/)
+
+1. **单调栈维护** ：
+
+- 栈中元素始终保持单调递减，确保每个节点的父节点是其左侧第一个更大值。
+- 例如，数组 `[3, 2, 1, 6, 0, 5]` 的单调栈变化：
+
+```plaintext
+处理 3: [3]
+处理 2: [3, 2]
+处理 1: [3, 2, 1]
+处理 6: [6]（3,2,1 弹出，成为 6 的左子树）
+处理 0: [6, 0]
+处理 5: [6, 5]（0 弹出，成为 5 的左子树）
+```
+
+2. **左右子树构建** ：
+
+- **左子树** ：最后一个弹出的节点（如 `1`）是当前节点（如 `6`）的左子节点。
+- **右子树** ：当前节点（如 `5`）是栈顶节点（如 `6`）的右子节点。
+
+3. **根节点确定** ：
+
+- 全局最大值始终在栈底，最终栈底元素即为根节点。
+
+**复杂度分析**
+
+- **时间复杂度** ： **O(n)** 。每个元素仅入栈和出栈一次。
+- **空间复杂度** ： **O(n)** 。栈最多存储所有节点。
+
+```python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def constructMaximumBinaryTree(self, nums: List[int]) -> Optional[TreeNode]:
+        # 单调栈特性
+        stack = []
+        for num in nums:
+            node = TreeNode(num)
+            last_poped = None
+
+            # 弹出所有小于当前值的节点，他们的右子节点为当前节点
+            while stack and stack[-1].val < num:
+                last_poped = stack.pop()
+
+            # 当前节点的左子节点为最后一个弹出的节点
+            node.left = last_poped
+
+            # 栈顶元素的右子节点为当前节点
+            if stack:
+                stack[-1].right = node
+
+            # 当前节点入栈
+            stack.append(node)
+
+        return stack[0]
 ```
 
 ## [42. 接雨水](https://leetcode.cn/problems/trapping-rain-water/)
@@ -2291,6 +3087,43 @@ class Solution:
                 left = st[-1]
                 dh = min(height[left], h) -bootom_h
                 ans += dh * (i - left -1)
+            st.append(i)
+
+        return ans
+```
+
+## [84. 柱状图中最大的矩形](https://leetcode.cn/problems/largest-rectangle-in-histogram/)-单调递减
+
+答题思路类似接雨水，[但是要注意极端情况](https://www.bilibili.com/video/BV1Ns4y1o7uB)
+
+![1747979515572](image/leetcode/1747979515572.png)
+
+```python
+class Solution:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        # 题目说明元素都大于1，
+        # 为什么要前后加0，防止数组元素时单调递增或递减元素，这样就算不到结果了
+        # [2,4,6,8] 或者 [8, 6, 4, 2]
+        # >> [0, 2, 4, 6, 8, 0]
+        heights.insert(0, 1)
+        heights.append(0)
+        st = []
+        ans = 0
+        """
+        求柱子最大面积，可以详细怎么定义最大面积
+
+        """
+        for i, n in enumerate(heights):
+            while st and n < heights[st[-1]]:
+                # 高度基准柱子
+                mid_high = heights[st.pop()]
+                if not st:
+                    break
+                # 左边比高度小的元素
+                left = st[-1]
+                # 计算面积
+                ans = max(ans, (i - left -1) * mid_high)
+
             st.append(i)
 
         return ans
@@ -2344,7 +3177,7 @@ class Solution:
 
 1. dp 数组以及下标的含义
 2. 递推公式
-3. dp 数组如何初始化
+3. dp 数组如何初始化-要有理有据
 4. 遍历顺序
    1. 排列和组合的遍历顺序是不相同的，一个是树层遍历(排列)， 一个是树枝遍历(组合)
 5. 打印 dp 数组 (出现问题后，打印 dp 数组，分析问题)
@@ -2671,6 +3504,174 @@ class Solution:
         return dp[-1]
 ```
 
+## [300. 最长递增子序列](https://leetcode.cn/problems/longest-increasing-subsequence/)
+
+![1748144563460](image/leetcode/1748144563460.png)
+
+```python
+class Solution:
+    def lengthOfLIS(self, nums: List[int]) -> int:
+        # 1.dp[i]含义：以i位置为结尾的递增子序列的最大长度
+        # 2.递推公式：dp[i] = max(dp[j]+1, dp[i])
+        # 3.初始化
+        # 由于计算的是长度，所以一个每个位置都是1
+        dp = [1] * len(nums)
+        # 注意ans 以1开始，不是0, 考虑数组元素都一样的情况[7,7,7,7,7]
+        ans = 1
+        for i in range(1, len(nums)):
+            # 求 0->i之间的最大值
+            for j in range(i):
+                # 递增
+                if nums[i] > nums[j]:
+                    dp[i] = max(dp[j]+1, dp[i])
+                    # 由于dp[i] 记录的是每个位置结尾的最大长度，结果要的是所有结果中的最大，所以在这里取最值
+                    ans = max(ans, dp[i])
+
+
+        return ans
+```
+
+## [674. 最长连续递增序列](https://leetcode.cn/problems/longest-continuous-increasing-subsequence/)
+
+```python
+class Solution:
+    def findLengthOfLCIS(self, nums: List[int]) -> int:
+        #1.dp[i]含义：以i为结尾的连续递增子序列的最大长度
+        #2.递推公式，注意这题是要求连续递增子序列，所以就是比较nums[i] > nums[i-1],
+        # 不需要想 leetcode: 300 一样找0->i之间的数据
+        # if nums[i] > nums[i-1]: dp[i] = dp[i-1]+1
+
+        # dp的思想就是，后面的利用前面的结果，不用在重复计算
+
+        dp = [1] * len(nums)
+        ans = 1
+        for i in range(1, len(nums)):
+            if nums[i] > nums[i-1]:
+                dp[i] = dp[i-1]+1
+                ans = max(ans, dp[i])
+
+        return ans
+```
+
+## [718. 最长重复子数组](https://leetcode.cn/problems/maximum-length-of-repeated-subarray/)，子数组是连续的
+
+![1748159001591](image/leetcode/1748159001591.png)
+
+<pre><strong>输入：</strong>nums1 = [1,2,3,2,1], nums2 = [3,2,1,4,7]
+<strong>输出：</strong>3
+<strong>解释：</strong>长度最长的公共子数组是 [3,2,1] 。</pre>
+
+```python
+class Solution:
+    def findLength(self, nums1: List[int], nums2: List[int]) -> int:
+        # 1. dp[i][j]含义：以i-1为结尾的num1和以j-1为结尾的num2的重复子数组的最大长度
+        """
+        为什么是i-1,j-1。其实是为了方便dp数组的初始化，我们把nums[i] == nums[j] 退化成检查
+        nums[i-1] == nums[j-1]， 因为如果要检查nums[i] 我们就要初始化dp[i][0],dp[0][j], 这两个要取遍历数组两个元素是否相当，相当位置才初始化为1，我们在二维数组中增加一行和一列，全部初始化为0，利用递推公式自增1，就可以避免要先遍历进行初始化了
+        """
+        dp = [[0]*(len(nums2)+1) for _ in range(len(nums1)+1)]
+        # 记录最长重复子数组的长度
+        ans = 0
+
+        # 遍历数组nums1
+        for i in range(1, len(nums1)+1):
+            # 遍历数组nums2
+            for j in range(1, len(nums2) + 1):
+                # 如果nums1[i-1] == nums2[j-1]
+                if nums1[i-1] == nums2[j-1]:
+                    # 在当前位置上的最长公共子数组长度为前一个位置上的长度加1
+                    dp[i][j] = dp[i-1][j-1]+1
+
+                    # 更新结果，数组中最长的公共子数组长度
+                    ans = max(ans, dp[i][j])
+
+
+        return ans
+```
+
+## [1143. 最长公共子序列](https://leetcode.cn/problems/longest-common-subsequence/)-非连续
+
+![1748157608234](image/leetcode/1748157608234.png)
+
+```python
+class Solution:
+    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
+
+        # 1.dp[i][j]含义： 以[0,i-1]的nums1和以[0, j-1]的nums2的最长公共子序列
+        dp = [[0] * (len(text2) + 1) for _ in range(len(text1)+1)]
+
+        # 2. 递推公式
+        # 3. 初始化
+        # 3. 遍历顺序
+        # 外层循环，遍历行
+        for i in range(1, len(text1)+1):
+            # 内层循环，遍历列
+            for j in range(1, len(text2)+1):
+                if text1[i-1] == text2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]+1
+                else:
+                    dp[i][j] = max(dp[i-1][j-1], dp[i][j-1], dp[i-1][j])
+
+        return dp[-1][-1]
+
+```
+
+## [1035. 不相交的线](https://leetcode.cn/problems/uncrossed-lines/)-本质就是 1143 最长公共子序列问题
+
+![img](https://assets.leetcode.com/uploads/2019/04/26/142.png)
+
+<pre><strong>输入：</strong>nums1 = <span id="example-input-1-1">[1,4,2]</span>, nums2 = <span id="example-input-1-2">[1,2,4]</span>
+<strong>输出：</strong><span id="example-output-1">2</span>
+<strong>解释：</strong>可以画出两条不交叉的线，如上图所示。 
+但无法画出第三条不相交的直线，因为从 nums1[1]=4 到 nums2[2]=4 的直线将与从 nums1[2]=2 到 nums2[1]=2 的直线相交。</pre>
+
+```python-repl
+class Solution:
+    def maxUncrossedLines(self, nums1: List[int], nums2: List[int]) -> int:
+        # 1.dp[i][j]含义： 以[0,i-1]的nums1和以[0, j-1]的nums2的最长公共子序列
+        dp = [[0] * (len(nums2) + 1) for _ in range(len(nums1)+1)]
+
+        # 2. 递推公式
+        # 3. 初始化
+        # 3. 遍历顺序
+        # 外层循环，遍历行
+        for i in range(1, len(nums1)+1):
+            # 内层循环，遍历列
+            for j in range(1, len(nums2)+1):
+                if nums1[i-1] == nums2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]+1
+                else:
+                    dp[i][j] = max(dp[i-1][j-1], dp[i][j-1], dp[i-1][j])
+
+        return dp[-1][-1]
+```
+
+## [53. 最大子数组和](https://leetcode.cn/problems/maximum-subarray/)-连续子序列的最大和
+
+> [https://www.bilibili.com/video/BV19V4y1F7b5](https://www.bilibili.com/video/BV19V4y1F7b5)
+
+```python
+class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        dp = [-inf] * len(nums)
+
+        # 第一步dp定义
+            # dp[i] 表示：最大连续子数组的和为dp[i]
+        # 第二步dp递推公式
+        # dp[i] 是否要包含前面已经叠加的部分，如果前面比自己还小，那就没必要叠加，要求的是最大和
+        # dp[i] = max(nums[i]+dp[i-1], nums[i])
+        # 第三步dp初始化
+        dp[0] = nums[0]
+
+        # 第四部遍历顺序
+        for i in range(1, len(nums)):
+            dp[i] = max(nums[i]+dp[i-1], nums[i])
+
+        # 注意返回值不是dp[-1], 注意我们dp[i]的含义是，第i位的最大连续子数组和
+        return max(dp)
+
+```
+
 ## [213. 打家劫舍 II](https://leetcode.cn/problems/house-robber-ii/)
 
 将首尾相连了
@@ -2795,3 +3796,69 @@ class Solution:
 
 - **状态依赖关系** ：当前节点的状态依赖于子节点的状态，因此必须先处理子节点，再处理父节点，符合后序遍历的顺序。
 - **递归的天然适配** ：递归函数的调用顺序天然形成后序遍历（先递归左子树，再递归右子树，最后处理当前节点）。
+
+# 图论
+
+## [200. 岛屿数量](https://leetcode.cn/problems/number-of-islands/)
+
+```plaintext
+例子1
+
+    grid = [
+      ["1","1","1","1","0"],
+      ["1","1","0","1","0"],
+      ["1","1","0","0","0"],
+      ["0","0","0","0","0"]
+    ]
+ 1、首先，我们初始化岛屿的数量为0。然后，我们开始遍历整个网格。
+    在第一次遍历时，我们遇到了第一个陆地（即grid[0][0] == "1"）。
+    我们使用深度优先搜索（DFS）来访问所有与这个陆地相连的陆地，并将这些陆地标记为已访问（即grid[r][c] = "2"）。
+    同时，我们将岛屿的数量加一。
+
+ 2、在DFS的过程中，我们会访问当前陆地的上下左右四个方向的陆地。
+    如果某个方向的陆地存在并且未被访问过（即grid[r][c] == "1"），我们就将它标记为已访问，并对它进行DFS。
+
+3、第一次DFS会访问到网格中的所有陆地，所以在第一次DFS结束后，网格变为：
+    grid = [
+      ["2","2","2","2","0"],
+      ["2","2","0","2","0"],
+      ["2","2","0","0","0"],
+      ["0","0","0","0","0"]
+    ]
+然后，我们继续遍历网格。但是，由于所有的陆地都已经被访问过，所以我们不会再进行任何操作。
+最后，我们返回岛屿的数量，即1。
+
+
+例子2:
+
+        grid = [
+      ["1","1","0","0","0"],
+      ["1","1","0","0","0"],
+      ["0","0","1","0","0"],
+      ["0","0","0","1","1"]
+    ]
+
+      遇到了第一个陆地（即grid[0][0] == "1"。第一次dfs后：
+        grid = [
+      ["2","2","0","0","0"],
+      ["2","2","0","0","0"],
+      ["0","0","1","0","0"],
+      ["0","0","0","1","1"]
+    ]
+     遇到了一个新的陆地（即grid[2][2] == "1"）。第二次dfs后：
+        grid = [
+      ["2","2","0","0","0"],
+      ["2","2","0","0","0"],
+      ["0","0","2","0","0"],
+      ["0","0","0","1","1"]
+    ]
+
+     遇到了最后一个岛屿（即grid[3][3] == "1"）。第三次dfs后：
+         grid = [
+      ["2","2","0","0","0"],
+      ["2","2","0","0","0"],
+      ["0","0","2","0","0"],
+      ["0","0","0","2","2"]
+    ]
+
+```
