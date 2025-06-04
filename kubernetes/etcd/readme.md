@@ -14,3 +14,5 @@
 12. [优化 etcd 集群的性能支撑大集群业务](./12.%20优化%20etcd集群的性能支撑大集群业务.md)
 
 理解 rafa 协议原理的网站：https://thesecretlivesofdata.com/raft/
+
+学习参考：[唐聪老师的-etcd 实战课程(非常硬核)](https://time.geekbang.org/column/intro/100069901)
