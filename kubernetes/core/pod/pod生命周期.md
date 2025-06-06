@@ -32,21 +32,21 @@ Pod 的阶段（Phase）是 Pod 在其生命周期中所处位置的简单宏观
 
 # Pod 状态计算细节
 
-| kubectl get pod 返回的状态                                             | Pod Phase | Conditions                                                                                 |
-| ---------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------ |
-| Completed                                                              | Succeeded |                                                                                            |
-| ContainerCreating                                                      | Pending   |                                                                                            |
-| CrashLoopBackOff                                                       | Running   | Container exits（一般是由于业务异常）                                                      |
-| CreateContainerConfigError                                             | Pending   | Configmap “test” not found``secret “my-secret” not found                                   |
-| ErrImagePull `ImagePullBackOff`Init:ImagePullBackOff``InvalidImageName | Pending   | Back-off pulling image                                                                     |
-| Error                                                                  | Failed    | restartPolicy: Never``container exits with Error(not 0)                                    |
-| Evicted                                                                | Failed    | Message: ‘Usage of EmptyDir volume “myworkdir” exceeds the limit “40Gi”.’``reason: Evicted |
-| Init: 0/1                                                              | Pending   | Init containers don’t exit                                                                 |
-| Init: CrashLoopBackOff/``Init: Error                                   | Pending   | Init container crashed (exit with not 1)                                                   |
-| OOMKilled                                                              | Running   | Containers are OOMKilled                                                                   |
-| StartError                                                             | Running   | Containers cannot be started                                                               |
-| Unknown                                                                | Running   | Node NotReady                                                                              |
-| OutOfCpu``OutOfMemory                                                  | Failed    | Scheduled, but it cannot pass kubelet admit                                                |
+| kubectl get pod 返回的状态                                             | Pod Phase | Conditions                                                                                |
+| ---------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- |
+| Completed                                                              | Succeeded |                                                                                           |
+| ContainerCreating                                                      | Pending   |                                                                                           |
+| CrashLoopBackOff                                                       | Running   | Container exits（一般是由于业务异常）                                                     |
+| CreateContainerConfigError                                             | Pending   | Configmap “test” not found``secret “my-secret” not found                                  |
+| ErrImagePull `ImagePullBackOff`Init:ImagePullBackOff、InvalidImageName | Pending   | Back-off pulling image                                                                    |
+| Error                                                                  | Failed    | restartPolicy: Never container exits with Error(not 0)                                    |
+| Evicted                                                                | Failed    | Message: Usage of EmptyDir volume “myworkdir” exceeds the limit “40Gi”.’``reason: Evicted |
+| Init: 0/1                                                              | Pending   | Init containers don’t exit                                                                |
+| Init: CrashLoopBackOff Init: Error                                     | Pending   | Init container crashed (exit with not 1)                                                  |
+| OOMKilled                                                              | Running   | Containers are OOMKilled                                                                  |
+| StartError                                                             | Running   | Containers cannot be started                                                              |
+| Unknown                                                                | Running   | Node NotReady                                                                             |
+| OutOfCpu <br />OutOfMemory                                             | Failed    | Scheduled, but it cannot pass kubelet admit                                               |
 
 # Pod 服务质量（**[Quality of Service，QoS](https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-qos/)）**
 
@@ -64,7 +64,7 @@ Kubernetes 基于 Pod 中[容器](https://kubernetes.io/zh-cn/docs/concepts/cont
 
 判断依据
 
-- **当 Pod 里的每一个 Container 都同时设置了 requests 和 limits，并且 requests 和 limits 值相等的时候，这个 Pod 就属于 Guaranteed 类别**
+- **当 Pod 里的每一个 Container cpu&mem 都同时设置了 requests 和 limits，并且 requests 和 limits 值相等的时候，这个 Pod 就属于 Guaranteed 类别**
 
 guaranteed 模式和 cpuset 的能力一致，独占 cpu，不是像 cpushare 那样共享 CPU 的计算能力，操作系统在 CPU 之间进行上下文切换的次数大大减少，容器里应用的性能会得到大幅提升。
 
