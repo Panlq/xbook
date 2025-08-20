@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package demo;
+import "proto/chat.proto";
+option go_package = "github/panlq/xbook/grpcproxy/gen/demo;demo";
+
+service Greeter {
+    rpc SayHello (demo.HelloRequest) returns (demo.HelloReply);
+}
+

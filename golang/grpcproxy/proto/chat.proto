@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package demo;
+option go_package = "github/panlq/xbook/grpcproxy/gen/demo;demo";
+
+
+service Chat {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+  // Bidirectional streaming pipeline.
+  rpc Pipe (stream ChatMessage) returns (stream ChatMessage);
+
+  // server side streaming
+  rpc Stream (HelloRequest) returns (stream HelloReply);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}
+
+message ChatMessage {
+  string id = 1;                 // client-provided id
+  bytes  payload = 2;            // potentially large data blob
+  map<string,string> annotations = 3; // proxy will inject/modify here
+}
