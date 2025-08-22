@@ -9,6 +9,7 @@ import (
 
 	proxy "github.com/mwitkow/grpc-proxy/proxy"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	pb "github/panlq/xbook/grpcproxy/gen/proto"
 )
@@ -38,6 +39,14 @@ var director = func(ctx context.Context, fullMethodName string) (context.Context
 	// }
 
 	fmt.Println("fullMethodName:", fullMethodName)
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		// transport the metadata
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+
+	// if need tls credentials
+	// conn, err := grpc.DialContext(ctx, backendAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	conn, err := grpc.DialContext(ctx, backendAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, nil, err
